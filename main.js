@@ -1,15 +1,15 @@
 /**
- * Miss.Vani's Cosmic Birthday Universe — main.js
+ * Mannuu's Cosmic Birthday Universe — main.js
  *
  * 360° Interactive Birthday Memory Gallery:
- *  - 143+ Local Photos distributed across the full 360° 3D sphere
- *  - Front, Back, Left, Right, Above, Below, Near, Far, and Depth tiers
+ *  - 49 Local Photos × 3 = 147 distributed across the full 360° 3D sphere
  *  - Native image aspect ratio preservation (no distortion or cropping)
  *  - Animated multi-colour running / chasing border + colourful glow halo
  *  - Smooth floating micro-animation
- *  - Smooth in-space zoom interaction (click/tap photo to fly up close, no + / - / arrow controls)
- *  - Zero external images / Zero placeholders
- *  - Cake & candle celebration transition + Web Audio ambient synthesizer
+ *  - Smooth in-space zoom (click/tap photo to fly up close)
+ *  - True pinch-to-zoom (pinch-out = zoom in, pinch-in = zoom out)
+ *  - Firecracker / fireworks celebration with real audio SFX
+ *  - BGM plays automatically from first screen interaction
  */
 
 /* ═══════════════════════════════════════════════════════
@@ -58,16 +58,51 @@ if (typeof CanvasRenderingContext2D !== 'undefined' &&
 }
 
 /* ═══════════════════════════════════════════════════════
-   PRIMARY AUDIO ENGINE & SFX (Local ./assets/ audio)
+   PRIMARY AUDIO ENGINE & SFX
    ═══════════════════════════════════════════════════════ */
 const Audio = (() => {
-  const BGM_SRC = './assets/Happy_Birthday_Instrumental.mp3';
+  const BGM_SRC        = './assets/Happy_Birthday_Instrumental.mp3';
+  const FIREWORKS_SRC  = './assets/dragon-studio-fireworks-02-419019.mp3';
+  const CRACKER_SRC    = './assets/alex_jauk-firecracker-sparkling-202928.mp3';
+
   let ctx = null, sfxGain = null;
   let bgAudio = null;
-  let isEnabled = true;  // ON by default
+  let fxAudioPool = []; // pool of preloaded sfx Audio objects
+  let isEnabled = true;
   let isPlaying = false;
   let lastStar = 0;
   let unlockBound = false;
+
+  /* Pre-create HTML Audio elements for firework SFX so they fire instantly */
+  function preloadSfx(src, count) {
+    const pool = [];
+    for (let i = 0; i < count; i++) {
+      try {
+        const a = new window.Audio(src);
+        a.preload = 'auto';
+        a.volume = 0.75;
+        pool.push(a);
+      } catch(_) {}
+    }
+    return pool;
+  }
+
+  /* Preload both SFX files: 3 instances each for quick repeated firing */
+  const fireworksPool = preloadSfx(FIREWORKS_SRC, 3);
+  const crackerPool   = preloadSfx(CRACKER_SRC, 4);
+
+  function playSfxFrom(pool) {
+    /* Find a pool member that is not playing, or reset the first one */
+    let target = pool.find(a => a.paused || a.ended);
+    if (!target) {
+      target = pool[0];
+      try { target.pause(); target.currentTime = 0; } catch(_) {}
+    }
+    if (target) {
+      target.currentTime = 0;
+      target.play().catch(() => {});
+    }
+  }
 
   function initBgAudio() {
     if (bgAudio) return;
@@ -77,15 +112,9 @@ const Audio = (() => {
       bgAudio.volume = 0.55;
       bgAudio.preload = 'auto';
 
-      bgAudio.addEventListener('play', () => {
-        isPlaying = true;
-        updateUi(true);
-      });
-      bgAudio.addEventListener('pause', () => {
-        isPlaying = false;
-        updateUi(false);
-      });
-      bgAudio.addEventListener('ended', () => {
+      bgAudio.addEventListener('play',   () => { isPlaying = true;  updateUi(true);  });
+      bgAudio.addEventListener('pause',  () => { isPlaying = false; updateUi(false); });
+      bgAudio.addEventListener('ended',  () => {
         if (bgAudio.loop && isEnabled) bgAudio.play().catch(() => {});
       });
     } catch (_) {}
@@ -105,17 +134,15 @@ const Audio = (() => {
   }
 
   function resumeCtx() {
-    if (ctx && ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
   }
 
   function updateUi(on) {
-    const btn = document.getElementById('audio-btn');
+    const btn    = document.getElementById('audio-btn');
     const iconOn = document.getElementById('audio-icon-on');
-    const iconOff = document.getElementById('audio-icon-off');
-    if (btn) btn.classList.toggle('on', on);
-    if (iconOn) iconOn.classList.toggle('hidden', !on);
+    const iconOff= document.getElementById('audio-icon-off');
+    if (btn)     btn.classList.toggle('on', on);
+    if (iconOn)  iconOn.classList.toggle('hidden', !on);
     if (iconOff) iconOff.classList.toggle('hidden', on);
   }
 
@@ -123,36 +150,26 @@ const Audio = (() => {
     if (unlockBound) return;
     unlockBound = true;
     const unlock = () => {
-      if (isEnabled && (!bgAudio || bgAudio.paused)) {
-        Audio.play();
-      }
-      ['pointerdown', 'click', 'touchstart', 'keydown'].forEach(evt => {
-        window.removeEventListener(evt, unlock);
-      });
+      if (isEnabled && (!bgAudio || bgAudio.paused)) Audio.play();
+      ['pointerdown','click','touchstart','keydown'].forEach(ev =>
+        window.removeEventListener(ev, unlock));
     };
-    ['pointerdown', 'click', 'touchstart', 'keydown'].forEach(evt => {
-      window.addEventListener(evt, unlock, { once: true, passive: true });
-    });
+    ['pointerdown','click','touchstart','keydown'].forEach(ev =>
+      window.addEventListener(ev, unlock, { once: true, passive: true }));
   }
 
   return {
-    get isOn() {
-      return isPlaying || isEnabled;
-    },
+    get isOn() { return isPlaying || isEnabled; },
 
     play() {
       isEnabled = true;
       initBgAudio();
-      bootCtx();
-      resumeCtx();
+      bootCtx(); resumeCtx();
       if (bgAudio) {
         bgAudio.play().then(() => {
-          isPlaying = true;
-          updateUi(true);
+          isPlaying = true; updateUi(true);
         }).catch(() => {
-          // Autoplay restricted by browser — unlock on next interaction
-          setupAutoplayUnlock();
-          updateUi(true);
+          setupAutoplayUnlock(); updateUi(true);
         });
       }
       return true;
@@ -160,23 +177,13 @@ const Audio = (() => {
 
     pause() {
       isEnabled = false;
-      if (bgAudio) {
-        bgAudio.pause();
-        isPlaying = false;
-        updateUi(false);
-      }
+      if (bgAudio) { bgAudio.pause(); isPlaying = false; updateUi(false); }
       return false;
     },
 
     toggle() {
-      initBgAudio();
-      bootCtx();
-      resumeCtx();
-      if (isPlaying || (bgAudio && !bgAudio.paused)) {
-        return this.pause();
-      } else {
-        return this.play();
-      }
+      initBgAudio(); bootCtx(); resumeCtx();
+      return (isPlaying || (bgAudio && !bgAudio.paused)) ? this.pause() : this.play();
     },
 
     /* Candle blow — soft white-noise breath */
@@ -184,11 +191,11 @@ const Audio = (() => {
       bootCtx(); resumeCtx();
       if (!ctx || !sfxGain) return;
       try {
-        const sz = ctx.sampleRate * 0.75;
+        const sz  = ctx.sampleRate * 0.75;
         const buf = ctx.createBuffer(1, sz, ctx.sampleRate);
-        const d = buf.getChannelData(0);
+        const d   = buf.getChannelData(0);
         for (let i = 0; i < sz; i++) d[i] = Math.random() * 2 - 1;
-        const src = ctx.createBufferSource(); src.buffer = buf;
+        const src  = ctx.createBufferSource(); src.buffer = buf;
         const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 700;
         filt.frequency.exponentialRampToValueAtTime(180, ctx.currentTime + 0.7);
         const g = ctx.createGain(); g.gain.value = 0.28;
@@ -198,7 +205,17 @@ const Audio = (() => {
       } catch (_) {}
     },
 
-    /* Celebration fanfare */
+    /* ── FIRECRACKER celebration — plays real audio SFX ── */
+    firecracker() {
+      /* Play fireworks boom first, stagger cracker snaps */
+      playSfxFrom(fireworksPool);
+      setTimeout(() => playSfxFrom(crackerPool),    350);
+      setTimeout(() => playSfxFrom(crackerPool),    850);
+      setTimeout(() => playSfxFrom(fireworksPool), 1100);
+      setTimeout(() => playSfxFrom(crackerPool),   1600);
+    },
+
+    /* Celebration fanfare (synth tones as fallback/overlay) */
     fanfare() {
       bootCtx(); resumeCtx();
       if (!ctx || !sfxGain) return;
@@ -206,7 +223,7 @@ const Audio = (() => {
         [[523.25,0],[659.25,.12],[783.99,.24],[1046.50,.42]].forEach(([f,t]) => {
           const o = ctx.createOscillator(), g = ctx.createGain();
           o.type = 'triangle'; o.frequency.value = f;
-          g.gain.setValueAtTime(0.18, ctx.currentTime + t);
+          g.gain.setValueAtTime(0.14, ctx.currentTime + t);
           g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.65);
           o.connect(g); g.connect(sfxGain);
           o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.7);
@@ -214,7 +231,7 @@ const Audio = (() => {
       } catch (_) {}
     },
 
-    /* Shooting-star shimmer sweep — subtle, rate-limited */
+    /* Shooting-star shimmer — subtle, rate-limited */
     starChime() {
       if (!isPlaying) return;
       const now = Date.now();
@@ -252,7 +269,7 @@ const Audio = (() => {
 })();
 
 /* ═══════════════════════════════════════════════════════
-   FX CANVAS — fireworks / confetti celebration
+   FX CANVAS — enhanced fireworks / confetti / cracker sparks
    ═══════════════════════════════════════════════════════ */
 const FX = (() => {
   const canvas = document.getElementById('fx-canvas');
@@ -267,32 +284,97 @@ const FX = (() => {
   resize();
   window.addEventListener('resize', resize, { passive: true });
 
-  function burst(x, y) {
-    const cols = ['#ffd166','#ff4d88','#b56fff','#4cc9f0','#ffffff','#ff9f43'];
-    for (let i = 0; i < 85; i++) {
-      const a = (i / 85) * Math.PI * 2 + (Math.random() - .5) * .3;
-      const sp = 2 + Math.random() * 8;
+  /* Standard radial burst (firework shell explosion) */
+  function burst(x, y, count = 90, speedMult = 1) {
+    const cols = ['#ffd166','#ff4d88','#b56fff','#4cc9f0','#ffffff','#ff9f43','#ff3860','#f7d794'];
+    for (let i = 0; i < count; i++) {
+      const a  = (i / count) * Math.PI * 2 + (Math.random() - .5) * .4;
+      const sp = (2.5 + Math.random() * 9) * speedMult;
       particles.push({
-        x, y, vx: Math.cos(a)*sp, vy: Math.sin(a)*sp,
+        x, y,
+        vx: Math.cos(a)*sp, vy: Math.sin(a)*sp,
         color: cols[Math.random()*cols.length|0],
-        r: 2 + Math.random()*2.5, alpha: 1,
-        decay: .012 + Math.random()*.015, gravity: .05,
+        r: 1.8 + Math.random()*2.8, alpha: 1,
+        decay: .011 + Math.random()*.016, gravity: .055,
+        trail: Math.random() > 0.5,
       });
     }
   }
 
-  function confetti() {
-    const cols = ['#ffd166','#ff4d88','#b56fff','#4cc9f0','#ffffff'];
-    for (let i = 0; i < 110; i++) {
+  /* Firecracker spark shower — tight bright sparks shooting upward */
+  function crackerBurst(x, y) {
+    const cols = ['#fff','#ffd700','#ff4500','#ffA500','#ff69b4','#00ffff'];
+    const count = 55;
+    for (let i = 0; i < count; i++) {
+      /* Bias angle upward (between -150° and -30° from positive-x = mostly upward) */
+      const a  = -Math.PI/2 + (Math.random() - 0.5) * Math.PI * 1.1;
+      const sp = 4 + Math.random() * 11;
       particles.push({
-        x: Math.random()*W, y: -20 - Math.random()*100,
-        vx: (Math.random()-.5)*4, vy: 2 + Math.random()*4,
+        x, y,
+        vx: Math.cos(a)*sp, vy: Math.sin(a)*sp,
+        color: cols[Math.random()*cols.length|0],
+        r: 1.2 + Math.random()*2.0, alpha: 1,
+        decay: .016 + Math.random()*.022, gravity: .08,
+        isSpark: true,
+      });
+    }
+  }
+
+  /* Full-screen confetti rain */
+  function confetti() {
+    const cols = ['#ffd166','#ff4d88','#b56fff','#4cc9f0','#ffffff','#ff9f43'];
+    for (let i = 0; i < 130; i++) {
+      particles.push({
+        x: Math.random()*W, y: -20 - Math.random()*120,
+        vx: (Math.random()-.5)*4, vy: 2.5 + Math.random()*4.5,
         color: cols[Math.random()*cols.length|0],
         r: 4 + Math.random()*5, alpha: 1,
-        decay: .005, gravity: .025,
+        decay: .004, gravity: .022,
         isRect: true, rot: Math.random()*360, rs: (Math.random()-.5)*9,
       });
     }
+  }
+
+  /* ── Firecracker celebration sequence:
+     Multiple bursts + cracker sparks in quick succession ── */
+  function firecrackerShow() {
+    const cx = W / 2, cy = H / 2;
+
+    /* Wave 1 — immediate double-burst at screen centre */
+    burst(cx * 0.5,  cy * 0.4, 100, 1.2);
+    burst(cx * 1.5,  cy * 0.4, 100, 1.2);
+
+    /* Wave 2 — cracker sparks from lower positions */
+    setTimeout(() => {
+      crackerBurst(W * 0.25, H * 0.7);
+      crackerBurst(W * 0.75, H * 0.7);
+    }, 300);
+
+    /* Wave 3 — big central burst */
+    setTimeout(() => {
+      burst(cx, cy * 0.35, 120, 1.4);
+      crackerBurst(W * 0.5, H * 0.65);
+    }, 650);
+
+    /* Wave 4 — side bursts */
+    setTimeout(() => {
+      burst(W * 0.15, cy * 0.5, 80, 1.0);
+      burst(W * 0.85, cy * 0.5, 80, 1.0);
+    }, 1000);
+
+    /* Wave 5 — final confetti rain */
+    setTimeout(() => {
+      confetti();
+      burst(cx, cy * 0.3, 90, 1.1);
+    }, 1350);
+
+    /* Trailing extra bursts */
+    setTimeout(() => { burst(W * 0.3, H * 0.25, 70, 0.9); }, 1700);
+    setTimeout(() => { burst(W * 0.7, H * 0.25, 70, 0.9); }, 2000);
+    setTimeout(() => {
+      burst(cx, cy * 0.2, 100, 1.3);
+      confetti();
+    }, 2300);
   }
 
   (function loop() {
@@ -302,22 +384,42 @@ const FX = (() => {
       const p = particles[i];
       p.x += p.vx; p.y += p.vy; p.vy += p.gravity; p.alpha -= p.decay;
       if (p.alpha <= 0 || p.y > H + 40) { particles.splice(i, 1); continue; }
+
       ctx2.save();
       ctx2.globalAlpha = p.alpha;
       ctx2.fillStyle   = p.color;
+
       if (p.isRect) {
         p.rot += p.rs;
         ctx2.translate(p.x, p.y);
         ctx2.rotate(p.rot * Math.PI / 180);
         ctx2.fillRect(-p.r/2, -p.r/2, p.r, p.r*1.5);
+      } else if (p.isSpark) {
+        /* Draw a bright elongated spark line */
+        ctx2.strokeStyle = p.color;
+        ctx2.lineWidth   = p.r * 0.8;
+        ctx2.lineCap = 'round';
+        ctx2.shadowColor = p.color;
+        ctx2.shadowBlur  = 6;
+        ctx2.beginPath();
+        ctx2.moveTo(p.x, p.y);
+        ctx2.lineTo(p.x - p.vx * 2.5, p.y - p.vy * 2.5);
+        ctx2.stroke();
       } else {
-        ctx2.beginPath(); ctx2.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx2.fill();
+        /* Circular particle with optional glow */
+        if (p.trail) {
+          ctx2.shadowColor = p.color;
+          ctx2.shadowBlur  = 8;
+        }
+        ctx2.beginPath();
+        ctx2.arc(p.x, p.y, p.r, 0, Math.PI*2);
+        ctx2.fill();
       }
       ctx2.restore();
     }
   })();
 
-  return { burst, confetti };
+  return { burst, crackerBurst, confetti, firecrackerShow };
 })();
 
 /* ═══════════════════════════════════════════════════════
@@ -328,7 +430,7 @@ const Universe = (() => {
   const canvas = document.getElementById('universe-canvas');
   const ctx    = canvas.getContext('2d', { alpha: false });
 
-  /* ── Mobile detection (MUST be before resize() is called) ── */
+  /* ── Mobile detection ── */
   const isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 768);
 
   let W, H, DPR, FOCAL;
@@ -345,6 +447,12 @@ const Universe = (() => {
 
   /* Zoom / focus state */
   let focusedPhoto = null;
+
+  /* ── Universe camera optical zoom & distance limits ─ */
+  let camZoom    = 1.0;
+  let targetZoom = 1.0;
+  const ZOOM_MIN = 0.45;
+  const ZOOM_MAX = 2.80;
 
   /* ── Resize ──────────────────────────────────────────── */
   function resize() {
@@ -363,10 +471,8 @@ const Universe = (() => {
   resize();
   window.addEventListener('resize', resize, { passive: true });
 
-  /* ── Stars — INFINITE TOROIDAL FIELD ────────────────────
-     Stars live in a box of ±STAR_RANGE around the camera.
-  ─────────────────────────────────────────────────────── */
-  const STAR_RANGE = 2200;
+  /* ── Stars — INFINITE TOROIDAL FIELD ── */
+  const STAR_RANGE  = 2200;
   const STAR_RANGE2 = STAR_RANGE * 2;
 
   const STAR_COLS = [
@@ -378,9 +484,9 @@ const Universe = (() => {
   function buildStars() {
     stars = [];
     const layers = [
-      { count: W < 768 ? 900 : 1800, sizeMin:.28, sizeMax:1.2,  aMin:.15, aMax:.55 }, // far
-      { count: W < 768 ? 350 :  750, sizeMin:.8,  sizeMax:2.0,  aMin:.35, aMax:.80 }, // mid
-      { count: W < 768 ? 100 :  220, sizeMin:1.6, sizeMax:3.4,  aMin:.55, aMax:1.0 }, // near
+      { count: W < 768 ? 900  : 1800, sizeMin:.28, sizeMax:1.2, aMin:.15, aMax:.55 }, // far
+      { count: W < 768 ? 350  :  750, sizeMin:.8,  sizeMax:2.0, aMin:.35, aMax:.80 }, // mid
+      { count: W < 768 ? 100  :  220, sizeMin:1.6, sizeMax:3.4, aMin:.55, aMax:1.0 }, // near
     ];
     for (const L of layers) {
       for (let i = 0; i < L.count; i++) {
@@ -388,10 +494,10 @@ const Universe = (() => {
           x: (Math.random() * 2 - 1) * STAR_RANGE,
           y: (Math.random() * 2 - 1) * STAR_RANGE,
           z: (Math.random() * 2 - 1) * STAR_RANGE,
-          size: L.sizeMin + Math.random() * (L.sizeMax - L.sizeMin),
+          size:  L.sizeMin + Math.random() * (L.sizeMax - L.sizeMin),
           color: STAR_COLS[Math.random() * STAR_COLS.length | 0],
-          a0:  L.aMin + Math.random() * (L.aMax - L.aMin),
-          ps:  .5 + Math.random() * 3,
+          a0:    L.aMin + Math.random() * (L.aMax - L.aMin),
+          ps:    .5 + Math.random() * 3,
         });
       }
     }
@@ -400,29 +506,24 @@ const Universe = (() => {
 
   function recycleStars() {
     for (const s of stars) {
-      let dx = s.x - cam.x;
-      let dy = s.y - cam.y;
-      let dz = s.z - cam.z;
-      if (dx >  STAR_RANGE) { s.x -= STAR_RANGE2; }
-      if (dx < -STAR_RANGE) { s.x += STAR_RANGE2; }
-      if (dy >  STAR_RANGE) { s.y -= STAR_RANGE2; }
-      if (dy < -STAR_RANGE) { s.y += STAR_RANGE2; }
-      if (dz >  STAR_RANGE) { s.z -= STAR_RANGE2; }
-      if (dz < -STAR_RANGE) { s.z += STAR_RANGE2; }
+      const dx = s.x - cam.x, dy = s.y - cam.y, dz = s.z - cam.z;
+      if (dx >  STAR_RANGE) s.x -= STAR_RANGE2;
+      if (dx < -STAR_RANGE) s.x += STAR_RANGE2;
+      if (dy >  STAR_RANGE) s.y -= STAR_RANGE2;
+      if (dy < -STAR_RANGE) s.y += STAR_RANGE2;
+      if (dz >  STAR_RANGE) s.z -= STAR_RANGE2;
+      if (dz < -STAR_RANGE) s.z += STAR_RANGE2;
     }
   }
 
-  /* ── Photos — 360° Fibonacci-Sphere with Multi-Depth Tiers ───────
-     Distributes ALL images smoothly in every 3D direction:
-     Front, Back, Left, Right, Above, Below, Near, Far, and Depth tiers.
-  ──────────────────────────────────────────────────────────────── */
-  const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5)); // ≈ 2.39996 rad
+  /* ── Photos — 360° Fibonacci-Sphere with Multi-Depth Tiers ── */
+  const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 
   function spherePoint(cx, cy, cz, rMin, rMax) {
-    const theta  = Math.random() * Math.PI * 2;
-    const cosP   = Math.random() * 2 - 1;
-    const sinP   = Math.sqrt(Math.max(0, 1 - cosP * cosP));
-    const r      = rMin + Math.random() * (rMax - rMin);
+    const theta = Math.random() * Math.PI * 2;
+    const cosP  = Math.random() * 2 - 1;
+    const sinP  = Math.sqrt(Math.max(0, 1 - cosP * cosP));
+    const r     = rMin + Math.random() * (rMax - rMin);
     return {
       x: cx + Math.cos(theta) * sinP * r,
       y: cy + cosP * r * 0.85,
@@ -434,61 +535,46 @@ const Universe = (() => {
     photos = [];
     const n = PHOTO_FILES.length;
 
-    // Depth tiers — closer on mobile so images project larger
     const depthTiers = isMobileDevice
-      ? [280, 380, 500, 650, 820, 1020, 1260, 1520]  // mobile: closer tiers
-      : [420, 580, 780, 1020, 1300, 1620, 1980, 2380]; // desktop: full range
+      ? [280, 380, 500, 650, 820, 1020, 1260, 1520]
+      : [420, 580, 780, 1020, 1300, 1620, 1980, 2380];
 
     PHOTO_FILES.forEach((rawUrl, i) => {
-      // Fibonacci sphere coordinates for full 360° uniform spherical coverage
       const t     = (i + 0.5) / n;
-      const cosP  = 1 - t * 2; // +1 (top) to -1 (bottom)
+      const cosP  = 1 - t * 2;
       const sinP  = Math.sqrt(Math.max(0, 1 - cosP * cosP));
       const theta = GOLDEN_ANGLE * i;
 
-      // Distance layer + natural jitter
       const tierIndex = i % depthTiers.length;
       const baseR     = depthTiers[tierIndex];
       const rJitter   = ((i * 47) % 90) - 45;
       const r         = baseR + rJitter;
 
       const bX = Math.cos(theta) * sinP * r;
-      const bY = cosP * r * 0.85; // slight natural galaxy compression
+      const bY = cosP * r * 0.85;
       const bZ = Math.sin(theta) * sinP * r;
 
       const photoObj = {
-        id: i,
-        rawUrl,
+        id: i, rawUrl,
         url: encodeURI(rawUrl),
-        img: null,
-        loaded: false,
-        loading: false,
-        failed: false,
+        img: null, loaded: false, loading: false, failed: false,
         loadPriority: tierIndex,
-        w: 160,
-        h: 210,
-        aspectRatioLoaded: false,
+        w: 160, h: 210, aspectRatioLoaded: false,
         sc:  0.85 + Math.random() * 0.25,
         rot: (Math.random() - 0.5) * 0.22,
         phi: Math.random() * Math.PI * 2,
-        border: BORDER_COLOURS[i % BORDER_COLOURS.length],
+        border:      BORDER_COLOURS[i % BORDER_COLOURS.length],
         borderSpeed: 0.18 + Math.random() * 0.22,
         borderDir:   Math.random() > 0.5 ? 1 : -1,
-        zoomScale: 1,
-        targetZoom: 1,
+        zoomScale: 1, targetZoom: 1,
         fadeAlpha: 0,
-        x:  bX,
-        y:  bY,
-        z:  bZ,
-        bX: bX,
-        bY: bY,
-        bZ: bZ,
+        x: bX, y: bY, z: bZ,
+        bX, bY, bZ,
       };
-
       photos.push(photoObj);
     });
 
-    // Progressive queue loader with concurrency limit to prevent mobile RAM/GPU exhaustion
+    /* Progressive queue loader with concurrency limit */
     const MAX_CONCURRENT = isMobileDevice ? 6 : 8;
     let activeLoads = 0;
     const loadQueue = [...photos].sort((a, b) => a.loadPriority - b.loadPriority);
@@ -497,56 +583,35 @@ const Universe = (() => {
       while (activeLoads < MAX_CONCURRENT && loadQueue.length > 0) {
         const p = loadQueue.shift();
         if (p.loaded || p.loading) continue;
-        p.loading = true;
-        activeLoads++;
+        p.loading = true; activeLoads++;
 
         const img = new Image();
         if ('decoding' in img) img.decoding = 'async';
 
         const applyAspect = () => {
           if (img.naturalWidth && img.naturalHeight) {
-            const aspect = img.naturalWidth / img.naturalHeight;
-            // Use slightly smaller base on mobile so distant images render above threshold
+            const aspect  = img.naturalWidth / img.naturalHeight;
             const baseDim = isMobileDevice ? 160 : 190;
-            if (aspect >= 1) {
-              p.w = baseDim;
-              p.h = Math.round(baseDim / aspect);
-            } else {
-              p.h = baseDim;
-              p.w = Math.round(baseDim * aspect);
-            }
+            if (aspect >= 1) { p.w = baseDim; p.h = Math.round(baseDim / aspect); }
+            else             { p.h = baseDim; p.w = Math.round(baseDim * aspect); }
             p.aspectRatioLoaded = true;
           }
         };
 
         const onComplete = () => {
-          p.img = img;
-          p.loaded = true;
-          p.loading = false;
-          applyAspect();
-          activeLoads--;
-          pumpQueue();
+          p.img = img; p.loaded = true; p.loading = false;
+          applyAspect(); activeLoads--; pumpQueue();
         };
 
         img.onload = onComplete;
         img.onerror = () => {
-          // Fallback trial with unencoded raw URL if encoded failed
           if (img.src !== p.rawUrl) {
-            img.onerror = () => {
-              p.failed = true;
-              p.loading = false;
-              activeLoads--;
-              pumpQueue();
-            };
+            img.onerror = () => { p.failed = true; p.loading = false; activeLoads--; pumpQueue(); };
             img.src = p.rawUrl;
           } else {
-            p.failed = true;
-            p.loading = false;
-            activeLoads--;
-            pumpQueue();
+            p.failed = true; p.loading = false; activeLoads--; pumpQueue();
           }
         };
-
         img.src = p.url;
       }
     }
@@ -554,55 +619,50 @@ const Universe = (() => {
   }
   buildPhotos();
 
-  /* ── 3-D Projection ──────────────────────────────────── */
+  /* ── 3-D Projection ── */
   function project(p) {
     let x = p.x - cam.x, y = p.y - cam.y, z = p.z - cam.z;
-    // Yaw rotation (Y axis)
-    const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+    const cy = Math.cos(cam.yaw),   sy = Math.sin(cam.yaw);
     let nx = x*cy - z*sy, nz = x*sy + z*cy;
-    // Pitch rotation (X axis)
     const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
     let ny = y*cp - nz*sp, zz = y*sp + nz*cp;
 
     if (zz <= 8) return null;
-    const sc = FOCAL / zz;
+    const sc = (FOCAL * camZoom) / zz;
     return { x: W/2 + nx*sc, y: H/2 + ny*sc, sc, depth: zz };
   }
 
-  /* ── Recycler (360° Spherical Galaxy) ─────────────────── */
+  /* ── Recycler ── */
   const MAX_PHOTO_DIST = isMobileDevice ? 2200 : 3400;
-  const RECYCLE_RMIN   = isMobileDevice ? 280  : 600;
+  const RECYCLE_RMIN   = isMobileDevice ?  280 :  600;
   const RECYCLE_RMAX   = isMobileDevice ? 1520 : 2200;
   function recycle() {
     photos.forEach(p => {
       const dist = Math.hypot(p.x - cam.x, p.y - cam.y, p.z - cam.z);
       if (dist > MAX_PHOTO_DIST) {
         const sp = spherePoint(cam.x, cam.y, cam.z, RECYCLE_RMIN, RECYCLE_RMAX);
-        p.x = p.bX = sp.x;
-        p.y = p.bY = sp.y;
-        p.z = p.bZ = sp.z;
+        p.x = p.bX = sp.x; p.y = p.bY = sp.y; p.z = p.bZ = sp.z;
         p.phi = Math.random() * Math.PI * 2;
       }
     });
   }
 
-  /* ── Shooting-star spawner ───────────────────────────── */
+  /* ── Shooting-star spawner ── */
   function spawnShooter() {
-    const cols = ['#ffd166','#ffffff','#4cc9f0','#ff9f43','#b56fff','#ff758f'];
+    const cols    = ['#ffd166','#ffffff','#4cc9f0','#ff9f43','#b56fff','#ff758f'];
     const goRight = Math.random() > .5;
     const speed   = 24 + Math.random() * 22;
     const angle   = (Math.random() * .55 + .18) * Math.PI;
     shooters.push({
-      x:  cam.x + (goRight ? -1 : 1) * (W * .45 + Math.random() * W * .3),
-      y:  cam.y - H * .3 - Math.random() * H * .2,
-      z:  cam.z + 160 + Math.random() * 340,
-      vx: Math.cos(angle) * speed * (goRight ? 1 : -1),
-      vy: Math.sin(angle) * speed,
-      vz: (Math.random() - .5) * 6,
-      color: cols[Math.random() * cols.length | 0],
-      trailLen: 90 + Math.random() * 100,
-      life: 1.0,
-      decay: .005 + Math.random() * .007,
+      x: cam.x + (goRight ? -1 : 1) * (W*.45 + Math.random()*W*.3),
+      y: cam.y - H*.3 - Math.random()*H*.2,
+      z: cam.z + 160 + Math.random()*340,
+      vx: Math.cos(angle)*speed*(goRight ? 1 : -1),
+      vy: Math.sin(angle)*speed,
+      vz: (Math.random()-.5)*6,
+      color: cols[Math.random()*cols.length|0],
+      trailLen: 90 + Math.random()*100,
+      life: 1.0, decay: .005 + Math.random()*.007,
       soundPlayed: false,
     });
   }
@@ -616,7 +676,7 @@ const Universe = (() => {
     })();
   }
 
-  /* ── Warp transition ─────────────────────────────────── */
+  /* ── Warp transition ── */
   function warp() {
     warping = true; warpProg = 0;
     const t0 = performance.now();
@@ -629,25 +689,16 @@ const Universe = (() => {
     })(t0);
   }
 
-  /* ── In-Space Smooth Zoom / Focus (360°-Aware) ────────── */
+  /* ── In-Space Smooth Zoom / Focus ── */
   function focusPhoto(p) {
     focusedPhoto = p;
-
-    // Direction vector from camera to photo
-    const dx = p.x - cam.x;
-    const dy = p.y - cam.y;
-    const dz = p.z - cam.z;
+    const dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z;
     const dist = Math.hypot(dx, dy, dz) || 1;
-
-    // Position camera 260 units right before the photo
     target.x = p.x - (dx / dist) * 260;
     target.y = p.y - (dy / dist) * 260;
     target.z = p.z - (dz / dist) * 260;
-
-    // Aim camera directly facing the photo
     target.yaw   = Math.atan2(dx, dz);
     target.pitch = -Math.asin(Math.max(-1, Math.min(1, dy / dist))) * 0.75;
-
     Audio.zoomPing();
   }
 
@@ -655,23 +706,18 @@ const Universe = (() => {
     if (!focusedPhoto) return;
     const p = focusedPhoto;
     focusedPhoto = null;
-
-    // Smoothly step camera back
-    const dx = p.x - cam.x;
-    const dy = p.y - cam.y;
-    const dz = p.z - cam.z;
+    const dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z;
     const dist = Math.hypot(dx, dy, dz) || 1;
     target.x -= (dx / dist) * 400;
     target.y -= (dy / dist) * 400;
     target.z -= (dz / dist) * 400;
-
     Audio.zoomPing();
   }
 
-  function zoomCloser() { target.z += 90; }
-  function zoomFurther(){ target.z -= 90; }
+  function zoomCloser()  { targetZoom = Math.min(ZOOM_MAX, targetZoom * 1.18); }
+  function zoomFurther() { targetZoom = Math.max(ZOOM_MIN, targetZoom / 1.18); }
 
-  /* ── Main Render Loop ────────────────────────────────── */
+  /* ── Main Render Loop ── */
   (function loop() {
     requestAnimationFrame(loop);
     time += 0.016;
@@ -682,17 +728,18 @@ const Universe = (() => {
     cam.z     += (target.z     - cam.z)     * 0.1;
     cam.yaw   += (target.yaw   - cam.yaw)   * e;
     cam.pitch += (target.pitch - cam.pitch) * e;
+    camZoom   += (targetZoom   - camZoom)   * 0.12;
 
     recycle();
     recycleStars();
 
-    /* Deep Cosmic Nebula Canvas Background */
+    /* Deep Cosmic Nebula Background */
     ctx.fillStyle = '#020308';
     ctx.fillRect(0, 0, W, H);
     const ng = ctx.createRadialGradient(W*0.5, H*0.5, 0, W*0.5, H*0.5, Math.max(W,H)*0.85);
-    ng.addColorStop(0, 'rgba(20, 11, 48, 0.45)');
-    ng.addColorStop(0.5,'rgba(5, 8, 26, 0.35)');
-    ng.addColorStop(1, 'rgba(2, 3, 8, 0.98)');
+    ng.addColorStop(0,   'rgba(20, 11, 48, 0.45)');
+    ng.addColorStop(0.5, 'rgba(5, 8, 26, 0.35)');
+    ng.addColorStop(1,   'rgba(2, 3, 8, 0.98)');
     ctx.fillStyle = ng;
     ctx.fillRect(0, 0, W, H);
 
@@ -702,7 +749,7 @@ const Universe = (() => {
   })();
 
   function drawStars() {
-    const batches = {};
+    const batches    = {};
     const warpStreaks = [];
 
     for (const s of stars) {
@@ -710,8 +757,8 @@ const Universe = (() => {
       if (!pr) continue;
       if (pr.x < -30 || pr.x > W+30 || pr.y < -30 || pr.y > H+30) continue;
 
-      const alpha = s.a0 * (0.52 + 0.48 * Math.sin(time * s.ps + s.x * 0.001));
-      const sz = Math.min(5, Math.max(0.45, s.size * Math.sqrt(pr.sc) * 1.6));
+      const alpha    = s.a0 * (0.52 + 0.48 * Math.sin(time * s.ps + s.x * 0.001));
+      const sz       = Math.min(5, Math.max(0.45, s.size * Math.sqrt(pr.sc) * 1.6));
       const distFade = Math.min(1, 0.3 + 0.7 * Math.min(1, pr.sc * 4));
 
       if (warping && warpProg > 0.08) {
@@ -757,46 +804,40 @@ const Universe = (() => {
       const speed = Math.hypot(s.vx, s.vy, s.vz) || 1;
       const p1 = project(s);
       const p2 = project({
-        x: s.x - (s.vx / speed) * s.trailLen,
-        y: s.y - (s.vy / speed) * s.trailLen,
-        z: s.z - (s.vz / speed) * s.trailLen,
+        x: s.x - (s.vx/speed)*s.trailLen,
+        y: s.y - (s.vy/speed)*s.trailLen,
+        z: s.z - (s.vz/speed)*s.trailLen,
       });
       if (!p1 || !p2) continue;
 
-      const onScreen = p1.x > -80 && p1.x < W+80 && p1.y > -80 && p1.y < H+80;
-      if (onScreen && !s.soundPlayed) {
-        s.soundPlayed = true;
-        Audio.starChime();
-      }
+      const onScreen  = p1.x > -80 && p1.x < W+80 && p1.y > -80 && p1.y < H+80;
+      if (onScreen && !s.soundPlayed) { s.soundPlayed = true; Audio.starChime(); }
 
       const lifeFade = Math.min(1, Math.min(s.life * 8, (1 - s.life) * 8 + 0.1));
-      const headR = Math.max(1.5, 3.5 * p1.sc);
+      const headR    = Math.max(1.5, 3.5 * p1.sc);
 
-      // Radial glow head
       const headGlow = ctx.createRadialGradient(p1.x, p1.y, 0, p1.x, p1.y, headR * 4);
       headGlow.addColorStop(0, `rgba(255,255,255,${lifeFade})`);
-      headGlow.addColorStop(0.35, s.color.replace(')', `,${lifeFade * 0.85})`).replace('rgb', 'rgba'));
+      headGlow.addColorStop(0.35, s.color.replace(')', `,${lifeFade * 0.85})`).replace('rgb','rgba'));
       headGlow.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.beginPath(); ctx.arc(p1.x, p1.y, headR * 4, 0, 6.2832);
       ctx.fillStyle = headGlow; ctx.fill();
 
-      // Bright core
       ctx.beginPath(); ctx.arc(p1.x, p1.y, headR, 0, 6.2832);
       ctx.fillStyle = `rgba(255,255,255,${lifeFade})`; ctx.fill();
 
-      // Linear trail
       const gr = ctx.createLinearGradient(p1.x, p1.y, p2.x, p2.y);
-      gr.addColorStop(0,   `rgba(255,255,255,${lifeFade * 0.9})`);
+      gr.addColorStop(0,    `rgba(255,255,255,${lifeFade * 0.9})`);
       gr.addColorStop(0.25, s.color);
       gr.addColorStop(0.7,  `rgba(181,111,255,${lifeFade * 0.2})`);
-      gr.addColorStop(1,   'rgba(0,0,0,0)');
+      gr.addColorStop(1,    'rgba(0,0,0,0)');
       ctx.beginPath();
       ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
       ctx.strokeStyle = gr;
       ctx.lineWidth   = Math.max(0.8, 2.8 * p1.sc);
       ctx.shadowColor = s.color; ctx.shadowBlur = 18;
       ctx.stroke();
-      ctx.shadowBlur  = 0;
+      ctx.shadowBlur = 0;
     }
   }
 
@@ -814,7 +855,6 @@ const Universe = (() => {
         visible.push({ p, pr });
     });
 
-    // Depth sort (far to near)
     visible.sort((a,b) => b.pr.depth - a.pr.depth);
 
     visible.forEach(({ p, pr }) => {
@@ -822,7 +862,6 @@ const Universe = (() => {
       const sc    = pr.sc * (isFoc ? 1.35 : p.sc);
       const w     = p.w * sc;
       const h     = p.h * sc;
-      // Lower threshold on mobile so distant photos still render
       const minPx = isMobileDevice ? 2 : 4;
       if (w < minPx || h < minPx) return;
 
@@ -830,14 +869,12 @@ const Universe = (() => {
       ctx.translate(pr.x, pr.y);
       ctx.rotate(isFoc ? 0 : p.rot + Math.sin(time * 0.35 + p.phi) * 0.032);
 
-      /* ── Subtle, refined outer glow halo (elegant & clear) ── */
-      const glowBlur = isFoc 
-        ? (isMobileDevice ? 10 : 16) 
+      const glowBlur = isFoc
+        ? (isMobileDevice ? 10 : 16)
         : (isMobileDevice ? 4 : 6) + Math.sin(time * 1.2 + p.phi) * 1.5;
       ctx.shadowColor = p.border;
       ctx.shadowBlur  = glowBlur;
 
-      /* Glass backing with rounded corners */
       const radius = Math.min(10, Math.min(w, h) * 0.08);
       ctx.fillStyle = 'rgba(10, 14, 40, 0.94)';
       ctx.beginPath();
@@ -845,7 +882,6 @@ const Universe = (() => {
       ctx.fill();
       ctx.shadowBlur = 0;
 
-      /* Clipped Photo with Native Aspect Ratio */
       ctx.save();
       ctx.beginPath();
       ctx.roundRect(-w/2, -h/2, w, h, radius);
@@ -857,23 +893,19 @@ const Universe = (() => {
         ctx.drawImage(p.img, -w/2, -h/2, w, h);
         ctx.globalAlpha = 1;
       } else {
-        // Celestial placeholder card while loading
         ctx.fillStyle = '#0e1234';
         ctx.fillRect(-w/2, -h/2, w, h);
         ctx.fillStyle = 'rgba(255, 209, 102, 0.45)';
         ctx.font = `${Math.max(10, Math.min(18, w * 0.14))}px sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText('✦', 0, 0);
       }
       ctx.restore();
 
-      /* ── Animated multi-colour running-light border (sleek & crisp) ── */
       const borderW = isFoc ? (isMobileDevice ? 2.4 : 3.0) : Math.max(1.4, Math.min(2.4, sc * 1.8));
       const hueOff  = (time * p.borderSpeed * p.borderDir * 60 + p.phi * 57.3) % 360;
       drawRunningBorder(ctx, w, h, hueOff, borderW, isFoc ? 8 : (isMobileDevice ? 3 : 5), radius);
 
-      /* Inner subtle white rim */
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
       ctx.lineWidth   = 0.7;
       ctx.beginPath();
@@ -884,43 +916,28 @@ const Universe = (() => {
     });
   }
 
-  /* ───────────────────────────────────────────────────────
-     drawRunningBorder
-     Draws smooth animated running rainbow border along the
-     exact perimeter of the photo with subtle glow.
-  ─────────────────────────────────────────────────────── */
   function drawRunningBorder(ctx, w, h, hueOff, bw, glow, r) {
     const hw = w / 2, hh = h / 2;
     const perimeter = 2 * (w + h);
-
     const sides = [
-      { x1:-hw, y1:-hh, x2: hw, y2:-hh, len: w,  off: 0     },  // top
-      { x1: hw, y1:-hh, x2: hw, y2: hh, len: h,  off: w     },  // right
-      { x1: hw, y1: hh, x2:-hw, y2: hh, len: w,  off: w+h   },  // bottom
-      { x1:-hw, y1: hh, x2:-hw, y2:-hh, len: h,  off: 2*w+h },  // left
+      { x1:-hw, y1:-hh, x2: hw, y2:-hh, len: w, off: 0     },
+      { x1: hw, y1:-hh, x2: hw, y2: hh, len: h, off: w     },
+      { x1: hw, y1: hh, x2:-hw, y2: hh, len: w, off: w+h   },
+      { x1:-hw, y1: hh, x2:-hw, y2:-hh, len: h, off: 2*w+h },
     ];
-
-    const hsl = (hue, a) => `hsla(${((hue % 360) + 360) % 360},100%,65%,${a})`;
+    const hsl   = (hue, a) => `hsla(${((hue % 360) + 360) % 360},100%,65%,${a})`;
     const STOPS = 8;
-
     ctx.lineWidth = bw;
     ctx.lineCap   = 'round';
-
     for (const side of sides) {
       const gr = ctx.createLinearGradient(side.x1, side.y1, side.x2, side.y2);
-
       for (let i = 0; i <= STOPS; i++) {
         const t = i / STOPS;
-        const perimPos = (side.off + t * side.len) / perimeter;
-        const hue = perimPos * 360 + hueOff;
-        gr.addColorStop(t, hsl(hue, 0.9));
+        gr.addColorStop(t, hsl((side.off + t * side.len) / perimeter * 360 + hueOff, 0.9));
       }
-
       ctx.strokeStyle = gr;
-      const midHue = ((side.off + side.len * 0.5) / perimeter) * 360 + hueOff;
-      ctx.shadowColor = hsl(midHue, 0.45);
+      ctx.shadowColor = hsl(((side.off + side.len * 0.5) / perimeter) * 360 + hueOff, 0.45);
       ctx.shadowBlur  = glow;
-
       ctx.beginPath();
       ctx.moveTo(side.x1, side.y1);
       ctx.lineTo(side.x2, side.y2);
@@ -929,16 +946,19 @@ const Universe = (() => {
     ctx.shadowBlur = 0;
   }
 
-  /* ── Pointer / Wheel / Touch / Pinch Controls ────────── */
-  let isDragging = false, lastPointer = { x:0, y:0 }, pointerMoved = false;
-  let isPinching = false, pinchStartDist = 0, pinchStartTargetZ = 0;
-  let touchStartPt = { x:0, y:0 }, isTouchMoved = false;
+  /* ═══════════════════════════════════════════════════════
+     POINTER / WHEEL / TOUCH / PINCH CONTROLS
+     ═══════════════════════════════════════════════════════ */
+  let isDragging   = false, lastPointer = { x:0, y:0 }, pointerMoved = false;
+  let isPinching   = false;
+  let pinchStartDist = 0, pinchStartTargetZ = 0;
+  let pinchLastDist  = 0;
+  let touchStartPt   = { x:0, y:0 }, isTouchMoved = false;
 
-  /* Pointer events for Desktop Mouse */
+  /* ── Desktop Mouse ── */
   canvas.addEventListener('pointerdown', e => {
-    if (e.pointerType === 'touch') return; // Managed by touch events for smooth multi-touch
-    isDragging = true;
-    pointerMoved = false;
+    if (e.pointerType === 'touch') return;
+    isDragging = true; pointerMoved = false;
     lastPointer = { x: e.clientX, y: e.clientY };
     try { canvas.setPointerCapture(e.pointerId); } catch(_){}
   });
@@ -958,26 +978,43 @@ const Universe = (() => {
   canvas.addEventListener('pointerup',     () => { isDragging = false; });
   canvas.addEventListener('pointercancel', () => { isDragging = false; });
 
-  /* Mobile Touch Events (1-finger pan / look-around & 2-finger pinch-to-zoom) */
+  /* ── Mobile Touch — 1-finger pan + 2-finger TRUE pinch-to-zoom ── */
   canvas.addEventListener('touchstart', e => {
     if (e.touches.length === 1) {
-      isPinching = false;
+      isPinching   = false;
       isTouchMoved = false;
       touchStartPt = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       lastPointer  = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    } else if (e.touches.length === 2) {
-      isPinching = true;
+    } else if (e.touches.length >= 2) {
+      e.preventDefault();
+      isPinching   = true;
       isTouchMoved = true;
+      isDragging   = false;
       pinchStartDist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       ) || 1;
-      pinchStartTargetZ = target.z;
+      pinchLastDist = pinchStartDist;
     }
-  }, { passive: true });
+  }, { passive: false });
 
   canvas.addEventListener('touchmove', e => {
-    if (e.touches.length === 1 && !isPinching) {
+    e.preventDefault(); /* Prevent page scrolling/elastic bouncing */
+    if (e.touches.length >= 2) {
+      /* ─ True pinch-to-zoom:
+           pinch-OUT (fingers apart) = zoom IN (forward magnification)
+           pinch-IN  (fingers together) = zoom OUT (wider celestial view) ─ */
+      const curDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      if (pinchLastDist > 0) {
+        const ratio = curDist / pinchLastDist;
+        targetZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, targetZoom * ratio));
+      }
+      pinchLastDist = curDist;
+      isPinching = true;
+    } else if (e.touches.length === 1 && !isPinching) {
       const dx = e.touches[0].clientX - lastPointer.x;
       const dy = e.touches[0].clientY - lastPointer.y;
       const totalDist = Math.hypot(
@@ -991,48 +1028,41 @@ const Universe = (() => {
       target.pitch  = Math.max(-1.3, Math.min(1.3, target.pitch));
       target.x     += dx * 0.5;
       target.y     -= dy * 0.5;
-      lastPointer  = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    } else if (e.touches.length === 2) {
-      const curDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      const scale = curDist / pinchStartDist;
-      const deltaZ = (scale - 1) * 480;
-      target.z = pinchStartTargetZ + deltaZ;
+      lastPointer   = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     }
-  }, { passive: true });
+  }, { passive: false });
 
   canvas.addEventListener('touchend', e => {
     if (e.touches.length === 0) {
-      // On mobile: do NOT trigger focus/lightbox on tap — keep immersive space view
-      isPinching = false;
-      isTouchMoved = false;
+      if (!isTouchMoved && !isPinching) {
+        handleTap(touchStartPt.x, touchStartPt.y);
+      }
+      isPinching    = false;
+      isTouchMoved  = false;
+      pinchLastDist = 0;
     } else if (e.touches.length === 1) {
-      isPinching = false;
-      lastPointer = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      /* One finger remains after a pinch: prevent sudden jump */
+      isPinching    = true;
+      lastPointer   = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      pinchLastDist = 0;
     }
-  }, { passive: true });
+  }, { passive: false });
 
-  /* Desktop Click only (no tap-to-focus on mobile) */
+  /* ── Desktop Click only ── */
   canvas.addEventListener('click', e => {
-    if (isMobileDevice) return; // Mobile: no focus/flythrough on tap
+    if (isMobileDevice) return;
     if (pointerMoved) { pointerMoved = false; return; }
     handleTap(e.clientX, e.clientY);
   });
 
-  /* In-Space Focus / Tap Handler */
   function handleTap(clientX, clientY) {
     let best = null, bestDist = 120;
     photos.forEach(p => {
-      const pr = project(p);
+      const pr   = project(p);
       if (!pr) return;
       const size = Math.max(50, Math.max(p.w, p.h) * 0.8 * pr.sc);
       const d    = Math.hypot(clientX - pr.x, clientY - pr.y);
-      if (d < Math.max(bestDist, size * 0.75)) {
-        best = p;
-        bestDist = d;
-      }
+      if (d < Math.max(bestDist, size * 0.75)) { best = p; bestDist = d; }
     });
 
     if (best) {
@@ -1043,13 +1073,13 @@ const Universe = (() => {
     }
   }
 
-  /* Wheel — fly through space */
+  /* ── Wheel — zoom through space ── */
   window.addEventListener('wheel', e => {
     e.preventDefault();
-    target.z += Math.max(-280, Math.min(280, e.deltaY)) * 2.6;
+    targetZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, targetZoom - e.deltaY * 0.0012));
   }, { passive: false });
 
-  /* Keyboard WASD & Arrow Navigation */
+  /* ── Keyboard Navigation (WASD & Arrows fly in 3D, +/- zooms) ── */
   const keys = {};
   window.addEventListener('keydown', e => {
     keys[e.code] = true;
@@ -1058,11 +1088,34 @@ const Universe = (() => {
   window.addEventListener('keyup', e => { keys[e.code] = false; });
 
   setInterval(() => {
-    const sp = 550 * 0.016;
-    if (keys['KeyW']||keys['ArrowUp'])    target.z += sp;
-    if (keys['KeyS']||keys['ArrowDown'])  target.z -= sp;
-    if (keys['KeyA']||keys['ArrowLeft'])  target.x -= sp;
-    if (keys['KeyD']||keys['ArrowRight']) target.x += sp;
+    const sp = 8;
+    const cy = Math.cos(cam.yaw),   sy = Math.sin(cam.yaw);
+    const cp = Math.cos(cam.pitch), spY = Math.sin(cam.pitch);
+
+    if (keys['KeyW'] || keys['ArrowUp']) {
+      target.x += sp * sy * cp;
+      target.y += sp * spY;
+      target.z += sp * cy * cp;
+    }
+    if (keys['KeyS'] || keys['ArrowDown']) {
+      target.x -= sp * sy * cp;
+      target.y -= sp * spY;
+      target.z -= sp * cy * cp;
+    }
+    if (keys['KeyA'] || keys['ArrowLeft']) {
+      target.x -= sp * cy;
+      target.z += sp * sy;
+    }
+    if (keys['KeyD'] || keys['ArrowRight']) {
+      target.x += sp * cy;
+      target.z -= sp * sy;
+    }
+    if (keys['Equal'] || keys['NumpadAdd']) {
+      targetZoom = Math.min(ZOOM_MAX, targetZoom + 0.02);
+    }
+    if (keys['Minus'] || keys['NumpadSubtract']) {
+      targetZoom = Math.max(ZOOM_MIN, targetZoom - 0.02);
+    }
   }, 16);
 
   return { warp, startShooters, zoomCloser, zoomFurther, resetFocus };
@@ -1083,67 +1136,57 @@ const Universe = (() => {
     blown = true;
     blowBtn.style.pointerEvents = 'none';
 
-    // Immediate audio unlock on user gesture
+    /* Immediately unlock audio (user gesture fires here) */
     Audio.play();
     Audio.blow();
 
-    // Stagger candle flame extinguish + smoke
+    /* Stagger candle flame extinguish + smoke */
     candles.forEach((c, i) => {
-      setTimeout(() => c.classList.add('out'), i * 110);
+      setTimeout(() => c.classList.add('out'), i * 80);
     });
 
-    // Celebration burst + fanfare
-    const delay = candles.length * 110 + 400;
+    const fireworkDelay = 220;
 
+    /* ── FIRECRACKER CELEBRATION — real SFX + visual burst ── */
     setTimeout(() => {
+      /* Play the real firecracker audio files immediately */
+      Audio.firecracker();
+
+      /* Visual fireworks show starts simultaneously */
+      FX.firecrackerShow();
+
+      /* Synth fanfare as harmonic overlay */
       Audio.fanfare();
+    }, fireworkDelay);
 
-      for (let i = 0; i < 5; i++) {
-        setTimeout(() => {
-          FX.burst(
-            window.innerWidth * (0.2 + Math.random() * 0.6),
-            window.innerHeight * (0.15 + Math.random() * 0.45),
-          );
-        }, i * 280);
-      }
-      FX.confetti();
-    }, delay);
-
-    // Warp smoothly into the 360° memory universe
+    /* Warp into the 360° memory universe */
     setTimeout(() => {
       homeStage.classList.add('fade-out');
-
       Universe.warp();
       universeStage.classList.remove('hidden');
       Universe.startShooters();
-    }, delay + 1000);
+    }, fireworkDelay + 2700);
   }
 
   let touchHandled = false;
 
-  blowBtn.addEventListener('touchend', (e) => {
+  blowBtn.addEventListener('touchend', e => {
     e.preventDefault();
     touchHandled = true;
     blowOut(e);
   }, { passive: false });
 
-  blowBtn.addEventListener('click', (e) => {
-    if (touchHandled) {
-      touchHandled = false;
-      return;
-    }
+  blowBtn.addEventListener('click', e => {
+    if (touchHandled) { touchHandled = false; return; }
     blowOut(e);
   });
 
-  // Tapping individual candles also blows out
+  /* Tapping individual candles also blows out */
   candles.forEach(c => {
-    c.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      blowOut(e);
+    c.addEventListener('touchend', e => {
+      e.preventDefault(); blowOut(e);
     }, { passive: false });
-    c.addEventListener('click', (e) => {
-      blowOut(e);
-    });
+    c.addEventListener('click', e => { blowOut(e); });
   });
 })();
 
@@ -1153,13 +1196,23 @@ const Universe = (() => {
 (function initAudioBtn() {
   const btn = document.getElementById('audio-btn');
   if (btn) {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', e => {
       e.stopPropagation();
       Audio.toggle();
     });
   }
 
-  // Audio ON by default on page load (with fallback autoplay unlock)
-  Audio.play();
-})();
+  /* ── Start music immediately on first user interaction (page load).
+     Browsers block autoplay until a user gesture. We attach a one-time
+     listener to the whole document so the very first tap/click/key
+     on the intro screen starts the BGM — no extra button click needed. ── */
+  Audio.play(); // attempt immediate start (works on some browsers)
 
+  const firstTouch = () => {
+    Audio.play();
+    ['pointerdown','touchstart','click','keydown'].forEach(ev =>
+      document.removeEventListener(ev, firstTouch));
+  };
+  ['pointerdown','touchstart','click','keydown'].forEach(ev =>
+    document.addEventListener(ev, firstTouch, { once: true, passive: true }));
+})();
