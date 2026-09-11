@@ -15,7 +15,7 @@
 /* ═══════════════════════════════════════════════════════
    PHOTO MANIFEST — ALL IMAGES FROM ./assets/
    ═══════════════════════════════════════════════════════ */
-/* ── 49 real photos (photo-01 … photo-49), repeated 3× to fill the 360° sphere ── */
+/* ── 49 real photos (photo-01 … photo-49), each appearing ONLY ONCE ── */
 const BASE_PHOTOS = (() => {
   const arr = [];
   for (let i = 1; i <= 49; i++) {
@@ -23,7 +23,7 @@ const BASE_PHOTOS = (() => {
   }
   return arr;
 })();
-const PHOTO_FILES = [...BASE_PHOTOS, ...BASE_PHOTOS, ...BASE_PHOTOS]; // 147 entries total
+const PHOTO_FILES = [...BASE_PHOTOS]; // 49 entries total — exactly one instance per photo!
 
 /* Rich neon & pastel border glow colours */
 const BORDER_COLOURS = [
@@ -451,8 +451,8 @@ const Universe = (() => {
   /* ── Universe camera optical zoom & distance limits ─ */
   let camZoom    = 1.0;
   let targetZoom = 1.0;
-  const ZOOM_MIN = 0.45;
-  const ZOOM_MAX = 2.80;
+  const ZOOM_MIN = 0.55;
+  const ZOOM_MAX = 2.40;
 
   /* ── Resize ──────────────────────────────────────────── */
   function resize() {
@@ -516,74 +516,120 @@ const Universe = (() => {
     }
   }
 
-  /* ── Photos — 360° Fibonacci-Sphere with Multi-Depth Tiers ── */
+  /* ── Photos — 360° Non-Overlapping Celestial Universe (49 Unique Memories) ── */
   const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
-
-  function spherePoint(cx, cy, cz, rMin, rMax) {
-    const theta = Math.random() * Math.PI * 2;
-    const cosP  = Math.random() * 2 - 1;
-    const sinP  = Math.sqrt(Math.max(0, 1 - cosP * cosP));
-    const r     = rMin + Math.random() * (rMax - rMin);
-    return {
-      x: cx + Math.cos(theta) * sinP * r,
-      y: cy + cosP * r * 0.85,
-      z: cz + Math.sin(theta) * sinP * r,
-    };
-  }
 
   function buildPhotos() {
     photos = [];
-    const n = PHOTO_FILES.length;
+    const N = PHOTO_FILES.length;
 
-    const depthTiers = isMobileDevice
-      ? [280, 380, 500, 650, 820, 1020, 1260, 1520]
-      : [420, 580, 780, 1020, 1300, 1620, 1980, 2380];
+    /* Base radii: generous space in all 3D directions */
+    const rBase = isMobileDevice ? 700 : 960;
+    const rSpan = isMobileDevice ? 260 : 380;
 
+    /* 1. Generate Fibonacci sphere unit directions with varied celestial depth */
+    const pts = [];
+    for (let i = 0; i < N; i++) {
+      const yUnit = 1 - (2 * i + 1) / N;
+      const rAtY  = Math.sqrt(Math.max(0.001, 1 - yUnit * yUnit));
+      const phi   = i * GOLDEN_ANGLE;
+      const ux    = rAtY * Math.cos(phi);
+      const uy    = yUnit;
+      const uz    = rAtY * Math.sin(phi);
+      /* Deterministic pseudo-random variation in depth layer */
+      const depthFactor = 0.35 + 0.65 * ((Math.sin(i * 4.3 + 1.1) + 1) / 2);
+      const r     = rBase + rSpan * depthFactor;
+      pts.push({
+        ux, uy, uz, r,
+        x: ux * r,
+        y: uy * r * 0.88,
+        z: uz * r,
+      });
+    }
+
+    /* 2. Collision avoidance & relaxation pass:
+          Enforces >= 25.2° angular sightline separation and >= 380px/490px 3D distance
+          so no two photos intersect, overlap, or block each other */
+    for (let iter = 0; iter < 12; iter++) {
+      for (let i = 0; i < N; i++) {
+        for (let j = i + 1; j < N; j++) {
+          const p1 = pts[i], p2 = pts[j];
+          const dot = Math.max(-1, Math.min(1, p1.ux * p2.ux + p1.uy * p2.uy + p1.uz * p2.uz));
+          const ang = Math.acos(dot);
+          const minAng = 0.44; // ~25.2 degrees
+          if (ang < minAng && ang > 0.001) {
+            const push = (minAng - ang) * 0.5;
+            p1.ux -= (p2.ux - p1.ux) * push;
+            p1.uy -= (p2.uy - p1.uy) * push;
+            p1.uz -= (p2.uz - p1.uz) * push;
+            p2.ux += (p2.ux - p1.ux) * push;
+            p2.uy += (p2.uy - p1.uy) * push;
+            p2.uz += (p2.uz - p1.uz) * push;
+            const l1 = Math.hypot(p1.ux, p1.uy, p1.uz) || 1;
+            p1.ux /= l1; p1.uy /= l1; p1.uz /= l1;
+            const l2 = Math.hypot(p2.ux, p2.uy, p2.uz) || 1;
+            p2.ux /= l2; p2.uy /= l2; p2.uz /= l2;
+            p1.x = p1.ux * p1.r; p1.y = p1.uy * p1.r * 0.88; p1.z = p1.uz * p1.r;
+            p2.x = p2.ux * p2.r; p2.y = p2.uy * p2.r * 0.88; p2.z = p2.uz * p2.r;
+          }
+
+          const minDist3D = isMobileDevice ? 380 : 490;
+          const dx = p2.x - p1.x, dy = p2.y - p1.y, dz = p2.z - p1.z;
+          const d3 = Math.hypot(dx, dy, dz);
+          if (d3 < minDist3D && d3 > 0.001) {
+            const shift = (minDist3D - d3) * 0.5 / d3;
+            p1.x -= dx * shift; p1.y -= dy * shift; p1.z -= dz * shift;
+            p2.x += dx * shift; p2.y += dy * shift; p2.z += dz * shift;
+          }
+        }
+      }
+    }
+
+    /* 3. Instantiate exactly 49 unique photo objects */
     PHOTO_FILES.forEach((rawUrl, i) => {
-      const t     = (i + 0.5) / n;
-      const cosP  = 1 - t * 2;
-      const sinP  = Math.sqrt(Math.max(0, 1 - cosP * cosP));
-      const theta = GOLDEN_ANGLE * i;
-
-      const tierIndex = i % depthTiers.length;
-      const baseR     = depthTiers[tierIndex];
-      const rJitter   = ((i * 47) % 90) - 45;
-      const r         = baseR + rJitter;
-
-      const bX = Math.cos(theta) * sinP * r;
-      const bY = cosP * r * 0.85;
-      const bZ = Math.sin(theta) * sinP * r;
-
+      const pt = pts[i];
+      const baseDim = isMobileDevice ? 150 : 185;
       const photoObj = {
-        id: i, rawUrl,
+        id: i,
+        rawUrl,
         url: encodeURI(rawUrl),
-        img: null, loaded: false, loading: false, failed: false,
-        loadPriority: tierIndex,
-        w: 160, h: 210, aspectRatioLoaded: false,
-        sc:  0.85 + Math.random() * 0.25,
-        rot: (Math.random() - 0.5) * 0.22,
-        phi: Math.random() * Math.PI * 2,
-        border:      BORDER_COLOURS[i % BORDER_COLOURS.length],
-        borderSpeed: 0.18 + Math.random() * 0.22,
-        borderDir:   Math.random() > 0.5 ? 1 : -1,
-        zoomScale: 1, targetZoom: 1,
+        img: null,
+        loaded: false,
+        loading: false,
+        failed: false,
+        w: baseDim,
+        h: Math.round(baseDim * 1.25),
+        aspectRatioLoaded: false,
+        sc: 0.95 + (i % 5) * 0.025,
+        rot: ((i * 17) % 21 - 10) * 0.007,
+        phi: (i * 1.618) % (Math.PI * 2),
+        border: BORDER_COLOURS[i % BORDER_COLOURS.length],
+        borderSpeed: 0.16 + ((i * 7) % 10) * 0.015,
+        borderDir: i % 2 === 0 ? 1 : -1,
+        zoomScale: 1,
+        targetZoom: 1,
         fadeAlpha: 0,
-        x: bX, y: bY, z: bZ,
-        bX, bY, bZ,
+        x: pt.x,
+        y: pt.y,
+        z: pt.z,
+        bX: pt.x,
+        bY: pt.y,
+        bZ: pt.z,
       };
       photos.push(photoObj);
     });
 
     /* Progressive queue loader with concurrency limit */
-    const MAX_CONCURRENT = isMobileDevice ? 6 : 8;
+    const MAX_CONCURRENT = isMobileDevice ? 4 : 6;
     let activeLoads = 0;
-    const loadQueue = [...photos].sort((a, b) => a.loadPriority - b.loadPriority);
+    const loadQueue = [...photos].sort((a, b) => b.z - a.z);
 
     function pumpQueue() {
       while (activeLoads < MAX_CONCURRENT && loadQueue.length > 0) {
         const p = loadQueue.shift();
         if (p.loaded || p.loading) continue;
-        p.loading = true; activeLoads++;
+        p.loading = true;
+        activeLoads++;
 
         const img = new Image();
         if ('decoding' in img) img.decoding = 'async';
@@ -591,16 +637,25 @@ const Universe = (() => {
         const applyAspect = () => {
           if (img.naturalWidth && img.naturalHeight) {
             const aspect  = img.naturalWidth / img.naturalHeight;
-            const baseDim = isMobileDevice ? 160 : 190;
-            if (aspect >= 1) { p.w = baseDim; p.h = Math.round(baseDim / aspect); }
-            else             { p.h = baseDim; p.w = Math.round(baseDim * aspect); }
+            const baseDim = isMobileDevice ? 150 : 185;
+            if (aspect >= 1) {
+              p.w = baseDim;
+              p.h = Math.round(baseDim / aspect);
+            } else {
+              p.h = Math.round(baseDim * 1.22);
+              p.w = Math.round(p.h * aspect);
+            }
             p.aspectRatioLoaded = true;
           }
         };
 
         const onComplete = () => {
-          p.img = img; p.loaded = true; p.loading = false;
-          applyAspect(); activeLoads--; pumpQueue();
+          p.img = img;
+          p.loaded = true;
+          p.loading = false;
+          applyAspect();
+          activeLoads--;
+          pumpQueue();
         };
 
         img.onload = onComplete;
@@ -609,7 +664,10 @@ const Universe = (() => {
             img.onerror = () => { p.failed = true; p.loading = false; activeLoads--; pumpQueue(); };
             img.src = p.rawUrl;
           } else {
-            p.failed = true; p.loading = false; activeLoads--; pumpQueue();
+            p.failed = true;
+            p.loading = false;
+            activeLoads--;
+            pumpQueue();
           }
         };
         img.src = p.url;
@@ -627,24 +685,9 @@ const Universe = (() => {
     const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
     let ny = y*cp - nz*sp, zz = y*sp + nz*cp;
 
-    if (zz <= 8) return null;
+    if (zz <= 16) return null;
     const sc = (FOCAL * camZoom) / zz;
     return { x: W/2 + nx*sc, y: H/2 + ny*sc, sc, depth: zz };
-  }
-
-  /* ── Recycler ── */
-  const MAX_PHOTO_DIST = isMobileDevice ? 2200 : 3400;
-  const RECYCLE_RMIN   = isMobileDevice ?  280 :  600;
-  const RECYCLE_RMAX   = isMobileDevice ? 1520 : 2200;
-  function recycle() {
-    photos.forEach(p => {
-      const dist = Math.hypot(p.x - cam.x, p.y - cam.y, p.z - cam.z);
-      if (dist > MAX_PHOTO_DIST) {
-        const sp = spherePoint(cam.x, cam.y, cam.z, RECYCLE_RMIN, RECYCLE_RMAX);
-        p.x = p.bX = sp.x; p.y = p.bY = sp.y; p.z = p.bZ = sp.z;
-        p.phi = Math.random() * Math.PI * 2;
-      }
-    });
   }
 
   /* ── Shooting-star spawner ── */
@@ -683,7 +726,6 @@ const Universe = (() => {
     (function step(now) {
       const p = Math.min(1, (now - t0) / 1400);
       warpProg = Math.sin(p * Math.PI);
-      target.z += 200 * warpProg;
       if (p < 1) requestAnimationFrame(step);
       else { warping = false; warpProg = 0; }
     })(t0);
@@ -691,26 +733,23 @@ const Universe = (() => {
 
   /* ── In-Space Smooth Zoom / Focus ── */
   function focusPhoto(p) {
+    if (focusedPhoto === p) {
+      resetFocus();
+      return;
+    }
     focusedPhoto = p;
-    const dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z;
-    const dist = Math.hypot(dx, dy, dz) || 1;
-    target.x = p.x - (dx / dist) * 260;
-    target.y = p.y - (dy / dist) * 260;
-    target.z = p.z - (dz / dist) * 260;
-    target.yaw   = Math.atan2(dx, dz);
-    target.pitch = -Math.asin(Math.max(-1, Math.min(1, dy / dist))) * 0.75;
+    /* Smoothly rotate camera to center directly on this photo */
+    target.yaw   = Math.atan2(p.bX, p.bZ);
+    const horizDist = Math.hypot(p.bX, p.bZ) || 1;
+    target.pitch = Math.max(-1.38, Math.min(1.38, Math.atan2(p.bY, horizDist)));
+    targetZoom   = 1.50;
     Audio.zoomPing();
   }
 
   function resetFocus() {
     if (!focusedPhoto) return;
-    const p = focusedPhoto;
     focusedPhoto = null;
-    const dx = p.x - cam.x, dy = p.y - cam.y, dz = p.z - cam.z;
-    const dist = Math.hypot(dx, dy, dz) || 1;
-    target.x -= (dx / dist) * 400;
-    target.y -= (dy / dist) * 400;
-    target.z -= (dz / dist) * 400;
+    targetZoom   = 1.0;
     Audio.zoomPing();
   }
 
@@ -722,15 +761,10 @@ const Universe = (() => {
     requestAnimationFrame(loop);
     time += 0.016;
 
-    const e = 0.08;
-    cam.x     += (target.x     - cam.x)     * e;
-    cam.y     += (target.y     - cam.y)     * e;
-    cam.z     += (target.z     - cam.z)     * 0.1;
-    cam.yaw   += (target.yaw   - cam.yaw)   * e;
-    cam.pitch += (target.pitch - cam.pitch) * e;
-    camZoom   += (targetZoom   - camZoom)   * 0.12;
+    cam.yaw   += (target.yaw   - cam.yaw)   * 0.085;
+    cam.pitch += (target.pitch - cam.pitch) * 0.085;
+    camZoom   += (targetZoom   - camZoom)   * 0.085;
 
-    recycle();
     recycleStars();
 
     /* Deep Cosmic Nebula Background */
@@ -846,8 +880,9 @@ const Universe = (() => {
     photos.forEach(p => {
       const isFoc = p === focusedPhoto;
       if (!isFoc) {
-        p.y = p.bY + Math.sin(time * 0.7 + p.phi) * 16;
-        p.x = p.bX + Math.cos(time * 0.4 + p.phi) * 10;
+        /* Gentle, subtle cosmic breathing micro-animation */
+        p.y = p.bY + Math.sin(time * 0.45 + p.phi) * 5;
+        p.x = p.bX + Math.cos(time * 0.35 + p.phi) * 4;
       }
       const pr = project(p);
       const fr = isMobileDevice ? 600 : 400;
@@ -958,27 +993,28 @@ const Universe = (() => {
   /* ── Desktop Mouse ── */
   canvas.addEventListener('pointerdown', e => {
     if (e.pointerType === 'touch') return;
-    isDragging = true; pointerMoved = false;
+    isDragging = true;
+    pointerMoved = false;
     lastPointer = { x: e.clientX, y: e.clientY };
-    try { canvas.setPointerCapture(e.pointerId); } catch(_){}
+    try { canvas.setPointerCapture(e.pointerId); } catch(_) {}
   });
 
   canvas.addEventListener('pointermove', e => {
     if (e.pointerType === 'touch' || !isDragging) return;
-    const dx = e.clientX - lastPointer.x, dy = e.clientY - lastPointer.y;
+    const dx = e.clientX - lastPointer.x;
+    const dy = e.clientY - lastPointer.y;
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) pointerMoved = true;
-    target.yaw   -= dx * 0.003;
-    target.pitch -= dy * 0.0025;
-    target.pitch  = Math.max(-1.3, Math.min(1.3, target.pitch));
-    target.x     += dx * 0.6;
-    target.y     -= dy * 0.6;
-    lastPointer = { x: e.clientX, y: e.clientY };
+    const sens = 0.0022;
+    target.yaw   -= dx * sens;
+    target.pitch -= dy * sens;
+    target.pitch  = Math.max(-1.42, Math.min(1.42, target.pitch));
+    lastPointer   = { x: e.clientX, y: e.clientY };
   });
 
   canvas.addEventListener('pointerup',     () => { isDragging = false; });
   canvas.addEventListener('pointercancel', () => { isDragging = false; });
 
-  /* ── Mobile Touch — 1-finger pan + 2-finger TRUE pinch-to-zoom ── */
+  /* ── Mobile Touch — 1-finger smooth rotation + 2-finger TRUE pinch-to-zoom ── */
   canvas.addEventListener('touchstart', e => {
     if (e.touches.length === 1) {
       isPinching   = false;
@@ -1023,11 +1059,10 @@ const Universe = (() => {
       );
       if (totalDist > 8) isTouchMoved = true;
 
-      target.yaw   -= dx * 0.0035;
-      target.pitch -= dy * 0.0028;
-      target.pitch  = Math.max(-1.3, Math.min(1.3, target.pitch));
-      target.x     += dx * 0.5;
-      target.y     -= dy * 0.5;
+      const sens = 0.0028;
+      target.yaw   -= dx * sens;
+      target.pitch -= dy * sens;
+      target.pitch  = Math.max(-1.42, Math.min(1.42, target.pitch));
       lastPointer   = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     }
   }, { passive: false });
@@ -1076,10 +1111,10 @@ const Universe = (() => {
   /* ── Wheel — zoom through space ── */
   window.addEventListener('wheel', e => {
     e.preventDefault();
-    targetZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, targetZoom - e.deltaY * 0.0012));
+    targetZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, targetZoom - e.deltaY * 0.0010));
   }, { passive: false });
 
-  /* ── Keyboard Navigation (WASD & Arrows fly in 3D, +/- zooms) ── */
+  /* ── Keyboard Navigation (WASD & Arrows rotate/look, +/- zooms) ── */
   const keys = {};
   window.addEventListener('keydown', e => {
     keys[e.code] = true;
@@ -1088,28 +1123,11 @@ const Universe = (() => {
   window.addEventListener('keyup', e => { keys[e.code] = false; });
 
   setInterval(() => {
-    const sp = 8;
-    const cy = Math.cos(cam.yaw),   sy = Math.sin(cam.yaw);
-    const cp = Math.cos(cam.pitch), spY = Math.sin(cam.pitch);
+    if (keys['KeyA'] || keys['ArrowLeft'])  target.yaw   -= 0.024;
+    if (keys['KeyD'] || keys['ArrowRight']) target.yaw   += 0.024;
+    if (keys['KeyW'] || keys['ArrowUp'])    target.pitch  = Math.min(1.4, target.pitch + 0.020);
+    if (keys['KeyS'] || keys['ArrowDown'])  target.pitch  = Math.max(-1.4, target.pitch - 0.020);
 
-    if (keys['KeyW'] || keys['ArrowUp']) {
-      target.x += sp * sy * cp;
-      target.y += sp * spY;
-      target.z += sp * cy * cp;
-    }
-    if (keys['KeyS'] || keys['ArrowDown']) {
-      target.x -= sp * sy * cp;
-      target.y -= sp * spY;
-      target.z -= sp * cy * cp;
-    }
-    if (keys['KeyA'] || keys['ArrowLeft']) {
-      target.x -= sp * cy;
-      target.z += sp * sy;
-    }
-    if (keys['KeyD'] || keys['ArrowRight']) {
-      target.x += sp * cy;
-      target.z -= sp * sy;
-    }
     if (keys['Equal'] || keys['NumpadAdd']) {
       targetZoom = Math.min(ZOOM_MAX, targetZoom + 0.02);
     }
