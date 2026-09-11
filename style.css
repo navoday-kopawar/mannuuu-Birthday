@@ -1,0 +1,527 @@
+/* ═══════════════════════════════════════════════════════════════════
+   MISS.VANI'S COSMIC BIRTHDAY UNIVERSE — STYLESHEET
+   Two stages:
+     Stage 1: Minimal cinematic birthday home (cake + glowing title)
+     Stage 2: Deep 3D space with floating photos, shooting stars, zoom
+   ═══════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Outfit:wght@300;400;600;700&display=swap');
+
+/* ─── TOKENS ─────────────────────────────────────────────────────── */
+:root{
+  --gold:#ffd166; --gold-g:rgba(255,209,102,.45);
+  --rose:#ff4d88; --rose-g:rgba(255,77,136,.45);
+  --purple:#b56fff; --purple-g:rgba(181,111,255,.45);
+  --cyan:#4cc9f0;  --cyan-g:rgba(76,201,240,.4);
+  --bg:#020308;
+  --glass:rgba(14,18,52,.6);
+  --border:rgba(255,255,255,.15);
+  --text:#f3f5ff; --muted:#9aa2c8;
+  --ff-title:'Cinzel Decorative','Cinzel',Georgia,serif;
+  --ff-serif:'Playfair Display','Cinzel',Georgia,serif;
+  --ff-sans:'Outfit',-apple-system,BlinkMacSystemFont,sans-serif;
+  --ease-out:cubic-bezier(.16,1,.3,1);
+}
+
+/* ─── RESET ──────────────────────────────────────────────────────── */
+*,*::before,*::after{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+  -webkit-tap-highlight-color:transparent;
+}
+html{
+  width:100%;
+  height:100%;
+  /* Prevent horizontal scroll at the root */
+  overflow-x:hidden;
+  overflow-y:hidden;
+}
+body{
+  width:100%;
+  height:100%;
+  /* Belt-and-suspenders horizontal overflow prevention */
+  overflow:hidden;
+  max-width:100vw;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--ff-sans);
+  overscroll-behavior:none;
+  -webkit-user-select:none;
+  user-select:none;
+  /* Ensure nothing pokes out on iOS */
+  position:fixed;
+  top:0; left:0; right:0; bottom:0;
+}
+button{
+  font-family:var(--ff-sans);
+  cursor:pointer;
+  border:none;
+  background:none;
+  color:inherit;
+  touch-action:manipulation;
+}
+.hidden{display:none!important}
+
+/* ─── CANVAS LAYERS ──────────────────────────────────────────────── */
+#universe-canvas,
+#fx-canvas{
+  position:fixed;inset:0;width:100%;height:100%;display:block;
+}
+#universe-canvas{z-index:0;background:var(--bg);touch-action:none}
+#fx-canvas{z-index:1;pointer-events:none}
+
+/* ─── AUDIO PILL (always top-right, icon only) ───────────────────── */
+.audio-pill{
+  position:fixed;
+  top:max(16px, env(safe-area-inset-top, 16px));
+  right:max(16px, env(safe-area-inset-right, 16px));
+  z-index:100;
+  width:46px;height:46px;border-radius:50%;
+  background:rgba(14,18,52,.78);
+  border:1px solid var(--border);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text);
+  cursor:pointer;
+  box-shadow:0 0 18px rgba(181,111,255,.3);
+  transition:transform .2s var(--ease-out),box-shadow .2s,border-color .2s;
+  /* Proper touch target size */
+  min-width:44px; min-height:44px;
+}
+.audio-pill:hover{transform:scale(1.12);box-shadow:0 0 28px var(--purple-g);border-color:rgba(255,255,255,.4)}
+.audio-pill.on{border-color:var(--cyan);box-shadow:0 0 24px var(--cyan-g)}
+.audio-icon{display:block;flex-shrink:0}
+
+/* ═══════════════════════════════════════════════════════════════════
+   STAGE 1 — HOME / BIRTHDAY ENTRANCE
+   ═══════════════════════════════════════════════════════════════════ */
+#home-stage{
+  position:fixed;inset:0;z-index:10;
+  display:flex;align-items:center;justify-content:center;
+  /* Use safe-area for notched phones */
+  padding:
+    max(20px, env(safe-area-inset-top, 20px))
+    max(16px, env(safe-area-inset-right, 16px))
+    max(36px, env(safe-area-inset-bottom, 36px))
+    max(16px, env(safe-area-inset-left, 16px));
+  background:radial-gradient(circle at 50% 45%,rgba(32,18,72,.9) 0%,rgba(7,9,26,.95) 70%,rgba(2,3,8,.99) 100%);
+  transition:opacity .9s var(--ease-out),transform .9s var(--ease-out),visibility .9s;
+  /* Prevent any children from overflowing */
+  overflow:hidden;
+}
+#home-stage.fade-out{opacity:0;transform:scale(1.12);visibility:hidden;pointer-events:none}
+
+/* ── Balloons ──────────────────────────────────────────────────── */
+.balloons{
+  position:absolute;inset:0;
+  /* Clip balloons strictly inside the stage — no horizontal overflow */
+  overflow:hidden;
+  pointer-events:none;
+}
+.balloon{
+  position:absolute;bottom:-80px;
+  border-radius:50% 50% 50% 50% / 40% 40% 60% 60%;
+  opacity:.52;
+  animation:balFloat linear infinite;
+}
+.balloon::after{content:'';position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);width:1px;height:22px;background:rgba(255,255,255,.25)}
+.b1{width:38px;height:50px;left:7%;background:linear-gradient(135deg,#ff758f,#d90429);animation-duration:15s;animation-delay:0s}
+.b2{width:46px;height:60px;left:20%;background:linear-gradient(135deg,#b56fff,#7209b7);animation-duration:12s;animation-delay:2.5s}
+.b3{width:34px;height:44px;left:78%;background:linear-gradient(135deg,#ffd166,#ff9f43);animation-duration:17s;animation-delay:1s}
+.b4{width:42px;height:54px;left:88%;background:linear-gradient(135deg,#4cc9f0,#4361ee);animation-duration:14s;animation-delay:4s}
+.b5{width:36px;height:46px;left:48%;background:linear-gradient(135deg,#ff4d88,#b56fff);animation-duration:19s;animation-delay:5.5s}
+.b6{width:30px;height:40px;left:35%;background:linear-gradient(135deg,#4cc9f0,#ff4d88);animation-duration:11s;animation-delay:3s}
+@keyframes balFloat{
+  0%  {transform:translateY(0) rotate(-4deg);opacity:0}
+  8%  {opacity:.55}
+  90% {opacity:.5}
+  100%{transform:translateY(calc(-100vh - 100px)) rotate(4deg);opacity:0}
+}
+
+/* ── Centre content ────────────────────────────────────────────── */
+.home-center{
+  display:flex;flex-direction:column;align-items:center;gap:clamp(12px,3.2vh,28px);
+  width:100%;max-width:580px;text-align:center;
+  position:relative;z-index:2;
+  /* Prevent children from causing overflow */
+  overflow:hidden;
+  padding:0 4px;
+}
+
+/* ── Birthday Header & Badge ────────────────────────────────────── */
+.bday-header{
+  display:flex;flex-direction:column;align-items:center;gap:clamp(6px,1.5vh,12px);
+  width:100%;
+  animation:titleEntrance 1.2s var(--ease-out) both;
+}
+.bday-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:5px 18px;
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,209,102,.38);
+  border-radius:9999px;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  box-shadow:0 0 20px rgba(255,209,102,.25);
+  font-size:clamp(9px,2.2vw,12.5px);
+  font-weight:600;letter-spacing:clamp(1px,0.5vw,2px);
+  text-transform:uppercase;color:var(--gold);
+  animation:badgeGlow 4s ease-in-out infinite alternate;
+  /* Prevent text overflow on tiny screens */
+  max-width:calc(100vw - 48px);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.badge-sparkle{color:var(--gold);font-size:12px;animation:sparkleTwinkle 2s ease-in-out infinite}
+
+/* ── Main Birthday Title ────────────────────────────────────────── */
+.bday-title{
+  display:flex;flex-direction:column;align-items:center;gap:clamp(2px,0.8vh,6px);
+  line-height:1.08;text-align:center;
+  width:100%;
+}
+.bday-happy{
+  font-family:var(--ff-serif);
+  font-style:italic;
+  font-size:clamp(18px,5.2vw,44px);
+  font-weight:700;
+  letter-spacing:clamp(1px,0.6vw,4px);
+  color:#fff;
+  text-shadow:
+    0 0 10px rgba(255,255,255,.9),
+    0 0 22px var(--rose),
+    0 0 45px var(--purple),
+    0 0 75px var(--cyan);
+  animation:happyGlow 3.5s ease-in-out infinite alternate;
+}
+.bday-name{
+  font-family:var(--ff-title);
+  font-size:clamp(32px,11.5vw,86px);
+  font-weight:900;
+  letter-spacing:clamp(1px,0.8vw,4px);
+  text-transform:uppercase;
+  background:linear-gradient(135deg,#ffffff 0%,#fff0b3 20%,#ffd166 38%,#ff4d88 62%,#b56fff 84%,#4cc9f0 100%);
+  background-size:260% 260%;
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+  animation:gradientShift 6s ease infinite, nameGlow 3.5s ease-in-out infinite alternate;
+  filter:drop-shadow(0 0 16px rgba(181,111,255,.8)) drop-shadow(0 0 38px rgba(255,77,136,.6)) drop-shadow(0 0 60px rgba(76,201,240,.4));
+  /* Prevent text from exceeding viewport width */
+  max-width:100%;
+  word-break:break-word;
+}
+@keyframes titleEntrance{
+  0%{opacity:0;transform:translateY(22px) scale(.94);filter:blur(6px)}
+  100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+}
+@keyframes badgeGlow{
+  0%{box-shadow:0 0 14px rgba(255,209,102,.2);border-color:rgba(255,209,102,.3)}
+  100%{box-shadow:0 0 26px rgba(255,77,136,.45),0 0 12px var(--gold);border-color:rgba(255,77,136,.6)}
+}
+@keyframes sparkleTwinkle{
+  0%,100%{opacity:.7;transform:scale(1)}
+  50%{opacity:1;transform:scale(1.35) rotate(15deg)}
+}
+@keyframes gradientShift{
+  0%,100%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+}
+@keyframes happyGlow{
+  0%{text-shadow:0 0 10px rgba(255,255,255,.9),0 0 22px var(--rose),0 0 45px var(--purple),0 0 75px var(--cyan)}
+  100%{text-shadow:0 0 14px #fff,0 0 32px var(--gold),0 0 60px var(--rose),0 0 95px var(--purple)}
+}
+@keyframes nameGlow{
+  0%{filter:drop-shadow(0 0 16px rgba(181,111,255,.8)) drop-shadow(0 0 38px rgba(255,77,136,.6)) drop-shadow(0 0 60px rgba(76,201,240,.4))}
+  100%{filter:drop-shadow(0 0 26px rgba(255,209,102,.95)) drop-shadow(0 0 52px rgba(255,77,136,.8)) drop-shadow(0 0 80px rgba(181,111,255,.6))}
+}
+
+/* ── BIRTHDAY CAKE ───────────────────────────────────────────────── */
+.cake-wrap{
+  position:relative;
+  display:flex;flex-direction:column;align-items:center;
+  width:clamp(160px,52vw,270px);
+  /* Ensure the cake never overflows on narrow screens */
+  max-width:calc(100vw - 40px);
+}
+
+/* Candles row */
+.candles-row{
+  display:flex;gap:clamp(8px,2.8vw,18px);
+  margin-bottom:0;position:relative;z-index:2;
+}
+.candle{
+  position:relative;
+  width:clamp(7px,1.6vw,11px);
+  height:clamp(24px,7vw,44px);
+  background:repeating-linear-gradient(45deg,#ffd166,#ffd166 4px,#ff4d88 4px,#ff4d88 8px);
+  border-radius:4px;
+  cursor:pointer;
+  touch-action:manipulation;
+}
+.candle::before{
+  content:'';
+  position:absolute;
+  /* Expanded tap target for mobile */
+  inset:-14px -14px;
+  touch-action:manipulation;
+}
+.flame{
+  position:absolute;
+  top:clamp(-14px,-3.5vw,-10px);
+  left:50%;transform:translateX(-50%);
+  width:clamp(7px,1.8vw,13px);
+  height:clamp(14px,4vw,22px);
+  border-radius:50% 50% 20% 20%;
+  background:radial-gradient(ellipse at bottom,#ffd166 0%,#ff5e00 60%,transparent 90%);
+  box-shadow:0 0 10px #ff9f43,0 0 22px #ffd166;
+  transform-origin:center bottom;
+  animation:flkr .75s ease-in-out infinite alternate;
+  transition:opacity .45s ease;
+}
+.candle.out .flame{opacity:0;animation:none}
+.smoke{
+  position:absolute;
+  top:clamp(-18px,-4vw,-12px);left:50%;
+  transform:translateX(-50%);
+  width:6px;height:6px;
+  background:rgba(210,210,210,.55);
+  border-radius:50%;
+  opacity:0;pointer-events:none;
+}
+.candle.out .smoke{animation:smokeUp 1.4s ease-out forwards}
+@keyframes flkr{
+  0%  {transform:translateX(-50%) scale(1) rotate(-2deg)}
+  50% {transform:translateX(-50%) scale(1.1,.92) rotate(2deg)}
+  100%{transform:translateX(-50%) scale(.94,1.1) rotate(-1deg)}
+}
+@keyframes smokeUp{
+  0%  {opacity:.8;transform:translateX(-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-38px) scale(3.5);filter:blur(3px)}
+}
+
+/* Cake tiers */
+.cake-top{
+  width:clamp(100px,30vw,170px);
+  height:clamp(32px,9vw,58px);
+  background:linear-gradient(180deg,#b56fff,#7209b7);
+  border-radius:10px 10px 4px 4px;
+  position:relative;
+  box-shadow:inset 0 6px 10px rgba(255,255,255,.28),0 4px 14px rgba(0,0,0,.5);
+  margin-bottom:0;
+}
+.cake-bottom{
+  width:clamp(148px,44vw,230px);
+  height:clamp(40px,11vw,70px);
+  background:linear-gradient(180deg,#ff758f,#d90429);
+  border-radius:12px 12px 6px 6px;
+  position:relative;
+  box-shadow:inset 0 8px 12px rgba(255,255,255,.28),0 5px 18px rgba(0,0,0,.55);
+}
+.frosting{
+  position:absolute;top:0;left:0;right:0;
+  height:clamp(10px,3vw,18px);
+  background:#fff;
+  border-radius:10px 10px 0 0;
+  display:flex;justify-content:space-around;overflow:hidden;
+}
+.frosting span{
+  display:block;
+  width:clamp(8px,2.5vw,15px);
+  height:clamp(10px,3vw,18px);
+  background:#fff;
+  border-radius:0 0 8px 8px;
+  margin-top:clamp(6px,2vw,12px);
+}
+.cake-plate{
+  width:clamp(170px,50vw,280px);
+  height:clamp(10px,3vw,18px);
+  background:linear-gradient(90deg,#3a416f,#8e94f2,#3a416f);
+  border-radius:50%;
+  box-shadow:0 10px 28px rgba(0,0,0,.8),0 0 20px rgba(142,148,242,.4);
+}
+
+/* ── BLOW PILL BUTTON ───────────────────────────────────────────── */
+.blow-pill{
+  position:relative;
+  display:inline-flex;align-items:center;justify-content:center;
+  gap:10px;
+  /* Tighter padding on tiny screens, generous on desktop */
+  padding:clamp(12px,3.2vw,17px) clamp(18px,5vw,42px);
+  border-radius:9999px;
+  background:linear-gradient(135deg,#6c5ce7 0%,#b56fff 45%,#ff4d88 100%);
+  border:1px solid rgba(255,255,255,.35);
+  color:#fff;
+  font-size:clamp(12px,3.4vw,16.5px);
+  font-weight:700;
+  letter-spacing:.6px;
+  cursor:pointer;
+  -webkit-user-select:none;
+  user-select:none;
+  outline:none;
+  touch-action:manipulation;
+  box-shadow:
+    0 0 35px var(--purple-g),
+    0 0 15px rgba(255,77,136,.4),
+    0 10px 28px rgba(0,0,0,.6);
+  transition:transform .24s var(--ease-out),box-shadow .24s var(--ease-out),filter .24s,border-color .24s;
+  animation:pillPulse 3s ease-in-out infinite;
+  /* Wrapping: allow text to wrap so it doesn't blow out narrow screens */
+  white-space:normal;
+  text-align:center;
+  /* Never wider than the viewport */
+  max-width:min(92vw, 420px);
+  width:auto;
+  /* Minimum touch-friendly height */
+  min-height:48px;
+  z-index:10;
+}
+.blow-pill *{
+  pointer-events:none;
+}
+.pill-glow{
+  position:absolute;inset:-2px;border-radius:9999px;
+  background:linear-gradient(90deg,#ff4d88,#ffd166,#b56fff,#4cc9f0,#ff4d88);
+  background-size:300% 100%;
+  opacity:.75;filter:blur(8px);z-index:-1;
+  animation:auraShift 4s linear infinite;
+  transition:opacity .3s ease,filter .3s ease;
+}
+.pill-icon{
+  flex-shrink:0;color:#ffd166;
+  filter:drop-shadow(0 0 8px #ffd166);
+  transition:transform .25s ease;
+}
+.pill-text{font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.pill-sparkles{font-size:16px;animation:sparkleRotate 2.5s ease-in-out infinite;flex-shrink:0}
+
+/* Hover effects */
+.blow-pill:hover{
+  cursor:pointer;
+  transform:translateY(-4px) scale(1.05);
+  filter:brightness(1.15);
+  border-color:rgba(255,255,255,.7);
+  box-shadow:
+    0 0 50px rgba(255,77,136,.7),
+    0 0 25px rgba(255,209,102,.6),
+    0 14px 34px rgba(0,0,0,.7);
+}
+.blow-pill:hover .pill-glow{opacity:1;filter:blur(12px)}
+.blow-pill:hover .pill-icon{transform:scale(1.18) rotate(-6deg)}
+
+/* Active / Mobile Tap effect */
+.blow-pill:active{
+  cursor:pointer;
+  transform:translateY(1px) scale(.96);
+  box-shadow:
+    0 0 22px var(--purple-g),
+    0 4px 14px rgba(0,0,0,.6);
+}
+@keyframes auraShift{0%{background-position:0% 50%}100%{background-position:300% 50%}}
+@keyframes sparkleRotate{0%,100%{transform:scale(1) rotate(0deg)}50%{transform:scale(1.28) rotate(180deg)}}
+@keyframes pillPulse{
+  0%,100%{box-shadow:0 0 32px var(--purple-g),0 0 15px rgba(255,77,136,.35),0 8px 24px rgba(0,0,0,.5)}
+  50%     {box-shadow:0 0 54px var(--rose-g),0 0 25px var(--gold),0 12px 30px rgba(0,0,0,.6)}
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   STAGE 2 — SPACE UNIVERSE OVERLAY UI
+   ═══════════════════════════════════════════════════════════════════ */
+#universe-stage{
+  position:fixed;inset:0;z-index:5;pointer-events:none;
+}
+#universe-stage:not(.hidden){display:block}
+
+/* Space hint bar */
+.space-hint{
+  position:absolute;
+  bottom:max(20px, env(safe-area-inset-bottom, 20px));
+  left:50%;transform:translateX(-50%);
+  background:rgba(5,7,20,.75);
+  border:1px solid var(--border);
+  border-radius:9999px;
+  padding:8px 20px;
+  font-size:clamp(11px,2.4vw,13px);
+  color:var(--muted);
+  letter-spacing:1px;
+  white-space:nowrap;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  pointer-events:none;
+  box-shadow:0 0 20px rgba(0,0,0,0.6);
+  opacity:.92;
+  transition:opacity 0.3s ease;
+  z-index:10;
+}
+
+/* ─── RESPONSIVE ─────────────────────────────────────────────────── */
+
+/* ── Small phones (≤ 480px) ── */
+@media(max-width:480px){
+  .audio-pill{
+    width:42px;height:42px;
+    top:max(12px, env(safe-area-inset-top, 12px));
+    right:max(12px, env(safe-area-inset-right, 12px));
+  }
+  /* Even more compact badge on the smallest screens */
+  .bday-badge{
+    padding:4px 12px;
+    letter-spacing:1px;
+    font-size:9px;
+  }
+  .badge-sparkle{display:none}
+  /* Pill button: ensure it wraps cleanly on 320px screens */
+  .blow-pill{
+    gap:8px;
+    padding:12px 16px;
+    font-size:12px;
+  }
+  .pill-icon{width:18px;height:18px}
+  /* Slightly smaller name on very narrow screens */
+  .bday-name{font-size:clamp(28px,10vw,48px)}
+}
+
+/* ── Tablet and up (≥ 769px) ── */
+@media(min-width:769px){
+  /* Show the exploration hint on desktop */
+  .space-hint{display:block}
+}
+
+/* ── Mobile: hide hint bar for immersive space view ── */
+@media(max-width:768px){
+  .space-hint{display:none!important}
+}
+
+/* ── Landscape / short-screen mode ── */
+@media(max-height:600px) and (orientation:landscape){
+  #home-stage{
+    padding:8px max(16px, env(safe-area-inset-right, 16px)) 8px max(16px, env(safe-area-inset-left, 16px));
+    align-items:center;
+  }
+  .home-center{
+    gap:6px;
+    flex-direction:row;
+    flex-wrap:wrap;
+    justify-content:center;
+    align-items:center;
+  }
+  .bday-header{gap:4px}
+  .bday-name{font-size:clamp(22px,6vw,42px)}
+  .bday-happy{font-size:clamp(14px,3.5vw,26px)}
+  .bday-badge{font-size:9px;padding:3px 10px}
+  .cake-wrap{
+    width:clamp(120px,28vw,190px);
+    max-width:28vw;
+  }
+  .blow-pill{
+    font-size:clamp(11px,2.4vw,14px);
+    padding:10px 18px;
+  }
+}
+
+/* ── Very short landscape (e.g. iPhone SE landscape) ── */
+@media(max-height:420px) and (orientation:landscape){
+  .cake-wrap{display:none}
+  .home-center{gap:4px}
+  .bday-name{font-size:clamp(20px,7vw,38px)}
+}

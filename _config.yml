@@ -1,0 +1,4 @@
+# GitHub Pages — Jekyll Config
+# This prevents Jekyll from processing the site, avoiding issues
+# with underscore-prefixed directories or files.
+# Since this is a plain HTML/CSS/JS site, we don't need Jekyll.

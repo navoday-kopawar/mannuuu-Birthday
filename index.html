@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+  <meta name="theme-color" content="#020308">
+
+  <!-- Primary Page Meta -->
+  <title>🎂 Happy Birthday Miss.Vani</title>
+  <meta name="title" content="🎂 Happy Birthday Miss.Vani">
+  <meta name="description" content="A personal 360° cosmic birthday memory universe celebrating Miss.Vani.">
+  <meta name="application-name" content="🎂 Happy Birthday Miss.Vani">
+  <meta name="apple-mobile-web-app-title" content="🎂 Happy Birthday Miss.Vani">
+  <meta itemprop="name" content="🎂 Happy Birthday Miss.Vani">
+  <meta itemprop="description" content="A personal 360° cosmic birthday memory universe celebrating Miss.Vani.">
+  <meta itemprop="image" content="./assets/photo-01.jpg">
+
+  <!-- Open Graph / Facebook / WhatsApp / Instagram / Telegram -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="🎂 Happy Birthday Miss.Vani">
+  <meta property="og:description" content="A personal 360° cosmic birthday memory universe celebrating Miss.Vani.">
+  <meta property="og:site_name" content="🎂 Happy Birthday Miss.Vani">
+  <meta property="og:image" content="./assets/photo-01.jpg">
+  <meta property="og:image:alt" content="🎂 Happy Birthday Miss.Vani">
+
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="🎂 Happy Birthday Miss.Vani">
+  <meta name="twitter:description" content="A personal 360° cosmic birthday memory universe celebrating Miss.Vani.">
+  <meta name="twitter:image" content="./assets/photo-01.jpg">
+  <meta name="twitter:image:alt" content="🎂 Happy Birthday Miss.Vani">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@700;900&family=Great+Vibes&family=Playfair+Display:ital,wght@0,700;1,600;1,800&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════
+       UNIVERSAL BACKGROUND: 3D CANVAS (always visible)
+       ═══════════════════════════════════════════════ -->
+  <canvas id="universe-canvas"></canvas>
+
+  <!-- Celebration FX layer (fireworks / confetti) -->
+  <canvas id="fx-canvas"></canvas>
+
+  <!-- ═══════════════════════════════════════════════
+       SMALL AUDIO CAPSULE (icon only, ON by default)
+       ═══════════════════════════════════════════════ -->
+  <button id="audio-btn" class="audio-pill on" aria-label="Toggle cosmic music" title="Toggle Music">
+    <svg id="audio-icon-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="audio-icon">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+    </svg>
+    <svg id="audio-icon-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="audio-icon hidden">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+      <line x1="23" y1="9" x2="17" y2="15"></line>
+      <line x1="17" y1="9" x2="23" y2="15"></line>
+    </svg>
+  </button>
+
+  <!-- ═══════════════════════════════════════════════
+       STAGE 1 — HOME / BIRTHDAY ENTRANCE
+       ═══════════════════════════════════════════════ -->
+  <div id="home-stage">
+
+    <!-- Floating Balloons (decorative) -->
+    <div class="balloons" aria-hidden="true">
+      <div class="balloon b1"></div>
+      <div class="balloon b2"></div>
+      <div class="balloon b3"></div>
+      <div class="balloon b4"></div>
+      <div class="balloon b5"></div>
+      <div class="balloon b6"></div>
+    </div>
+
+    <!-- Centre content -->
+    <div class="home-center">
+
+      <!-- Main Birthday Title with festive neon gradient glow -->
+      <header class="bday-header">
+        <div class="bday-badge">
+          <span class="badge-sparkle">✦</span>
+          <span class="badge-text">Celebrating A Cosmic Soul</span>
+          <span class="badge-sparkle">✦</span>
+        </div>
+        <h1 class="bday-title">
+          <span class="bday-happy">Happy Birthday</span>
+          <span class="bday-name">Miss.Vani</span>
+        </h1>
+      </header>
+
+      <!-- Birthday Cake -->
+      <div class="cake-wrap" aria-label="Birthday cake with candles">
+
+        <!-- Candle row sits above top tier -->
+        <div class="candles-row" id="candles-row">
+          <div class="candle" data-i="0"><div class="flame"></div><div class="smoke"></div></div>
+          <div class="candle" data-i="1"><div class="flame"></div><div class="smoke"></div></div>
+          <div class="candle" data-i="2"><div class="flame"></div><div class="smoke"></div></div>
+          <div class="candle" data-i="3"><div class="flame"></div><div class="smoke"></div></div>
+          <div class="candle" data-i="4"><div class="flame"></div><div class="smoke"></div></div>
+        </div>
+
+        <div class="cake-top">
+          <div class="frosting">
+            <span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+        <div class="cake-bottom">
+          <div class="frosting">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+        <div class="cake-plate"></div>
+      </div><!-- /cake-wrap -->
+
+      <!-- Blow Candles Capsule Button -->
+      <button class="blow-pill" id="blow-btn" aria-label="Blow out candles and make a wish">
+        <span class="pill-glow" aria-hidden="true"></span>
+        <svg class="pill-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 16c0 4 3 6 5 6s5-2 5-6-5-10-5-10S7 12 7 16z"></path>
+          <path d="M12 2v4"></path>
+        </svg>
+        <span class="pill-text">Blow Out Candles &amp; Make a Wish</span>
+        <span class="pill-sparkles" aria-hidden="true">✨</span>
+      </button>
+
+    </div><!-- /home-center -->
+  </div><!-- /home-stage -->
+
+  <!-- ═══════════════════════════════════════════════
+       STAGE 2 — SPACE UNIVERSE (hidden until entry)
+       ═══════════════════════════════════════════════ -->
+  <div id="universe-stage" class="hidden">
+
+    <!-- Space controls (bottom bar) -->
+    <div class="space-hint" id="space-hint">
+      Drag · Scroll · Pinch to explore
+    </div>
+
+  </div><!-- /universe-stage -->
+
+  <script src="main.js"></script>
+</body>
+</html>
