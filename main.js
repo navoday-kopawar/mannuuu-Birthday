@@ -549,6 +549,7 @@ const Universe = (() => {
         x: ux * r,
         y: uy * r * 0.85,
         z: uz * r,
+        phi,
       });
     }
 
@@ -587,6 +588,7 @@ const Universe = (() => {
         h: Math.round(baseDim * 1.25),
         aspectRatioLoaded: false,
         sc: 1.0,
+        phi: pt.phi,
         /* Fixed natural photo tilt (NO continuous rotation oscillation) */
         rot: ((i * 17) % 21 - 10) * 0.006,
         border: BORDER_COLOURS[i % BORDER_COLOURS.length],
@@ -913,9 +915,10 @@ const Universe = (() => {
       ctx.rotate(isFoc ? 0 : p.rot);
       if (pr.nearFade !== undefined) ctx.globalAlpha = pr.nearFade;
 
+      const pPhi = Number.isFinite(p.phi) ? p.phi : (p.id * GOLDEN_ANGLE);
       const glowBlur = isFoc
         ? (isMobileDevice ? 10 : 16)
-        : (isMobileDevice ? 4 : 6) + Math.sin(time * 1.2 + p.phi) * 1.5;
+        : (isMobileDevice ? 4 : 6) + Math.sin(time * 1.2 + pPhi) * 1.5;
       ctx.shadowColor = p.border;
       ctx.shadowBlur  = glowBlur;
 
@@ -947,7 +950,9 @@ const Universe = (() => {
       ctx.restore();
 
       const borderW = isFoc ? (isMobileDevice ? 2.4 : 3.0) : Math.max(1.4, Math.min(2.4, sc * 1.8));
-      const hueOff  = (time * p.borderSpeed * p.borderDir * 60 + p.phi * 57.3) % 360;
+      const speed   = Number.isFinite(p.borderSpeed) ? p.borderSpeed : 0.2;
+      const dir     = Number.isFinite(p.borderDir) ? p.borderDir : 1;
+      const hueOff  = (time * speed * dir * 60 + pPhi * 57.3) % 360;
       drawRunningBorder(ctx, w, h, hueOff, borderW, isFoc ? 8 : (isMobileDevice ? 3 : 5), radius);
 
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
@@ -969,7 +974,10 @@ const Universe = (() => {
       { x1: hw, y1: hh, x2:-hw, y2: hh, len: w, off: w+h   },
       { x1:-hw, y1: hh, x2:-hw, y2:-hh, len: h, off: 2*w+h },
     ];
-    const hsl   = (hue, a) => `hsla(${((hue % 360) + 360) % 360},100%,65%,${a})`;
+    const hsl   = (hue, a) => {
+      const h = Number.isFinite(hue) ? (((hue % 360) + 360) % 360) : 0;
+      return `hsla(${h},100%,65%,${a})`;
+    };
     const STOPS = 8;
     ctx.lineWidth = bw;
     ctx.lineCap   = 'round';
